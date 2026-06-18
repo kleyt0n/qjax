@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-28.70 -191.20 382.40 382.40" width="64" height="64">
+  <polygon points="75.00,-129.90 125.00,-129.90 150.00,-173.20 100.00,-173.20" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="175.00,-129.90 225.00,-129.90 250.00,-173.20 200.00,-173.20" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="225.00,-129.90 275.00,-129.90 300.00,-173.20 250.00,-173.20" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="125.00,-129.90 175.00,-129.90 200.00,-173.20 150.00,-173.20" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="50.00,-86.60 100.00,-86.60 125.00,-129.90 75.00,-129.90" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="200.00,-86.60 250.00,-86.60 275.00,-129.90 225.00,-129.90" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="25.00,-43.30 75.00,-43.30 100.00,-86.60 50.00,-86.60" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="175.00,-43.30 225.00,-43.30 250.00,-86.60 200.00,-86.60" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="0.00,0.00 50.00,0.00 75.00,-43.30 25.00,-43.30" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="100.00,0.00 150.00,0.00 175.00,-43.30 125.00,-43.30" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="150.00,0.00 200.00,0.00 225.00,-43.30 175.00,-43.30" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="50.00,0.00 100.00,0.00 125.00,-43.30 75.00,-43.30" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="125.00,43.30 175.00,43.30 200.00,0.00 150.00,0.00" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="100.00,86.60 150.00,86.60 175.00,43.30 125.00,43.30" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="75.00,129.90 125.00,129.90 150.00,86.60 100.00,86.60" fill="#ffd9a8" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="175.00,-129.90 225.00,-129.90 250.00,-86.60 200.00,-86.60" fill="#f5a55a" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="275.00,-129.90 300.00,-173.20 325.00,-129.90 300.00,-86.60" fill="#ffbf80" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="125.00,-129.90 175.00,-129.90 200.00,-86.60 150.00,-86.60" fill="#f5a55a" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="100.00,-86.60 125.00,-129.90 150.00,-86.60 125.00,-43.30" fill="#ffbf80" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="250.00,-86.60 275.00,-129.90 300.00,-86.60 275.00,-43.30" fill="#ffbf80" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="75.00,-43.30 100.00,-86.60 125.00,-43.30 100.00,0.00" fill="#ffbf80" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="225.00,-43.30 250.00,-86.60 275.00,-43.30 250.00,0.00" fill="#ffbf80" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="0.00,0.00 50.00,0.00 75.00,43.30 25.00,43.30" fill="#f5a55a" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="100.00,0.00 150.00,0.00 175.00,43.30 125.00,43.30" fill="#f5a55a" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="200.00,0.00 225.00,-43.30 250.00,0.00 225.00,43.30" fill="#ffbf80" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="50.00,0.00 100.00,0.00 125.00,43.30 75.00,43.30" fill="#f5a55a" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="175.00,43.30 200.00,0.00 225.00,43.30 200.00,86.60" fill="#ffbf80" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="150.00,86.60 175.00,43.30 200.00,86.60 175.00,129.90" fill="#ffbf80" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="75.00,129.90 125.00,129.90 150.00,173.20 100.00,173.20" fill="#f5a55a" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+  <polygon points="125.00,129.90 150.00,86.60 175.00,129.90 150.00,173.20" fill="#ffbf80" stroke="#fbe9d2" stroke-width="1.6" stroke-linejoin="round"/>
+</svg>
