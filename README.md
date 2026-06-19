@@ -2,7 +2,7 @@
 
 <img src="assets/logo_qjax.svg" alt="qjax logo" width="340"/>
 
-# qjax
+#
 
 **Tsallis statistics for artificial intelligence, built on [JAX](https://github.com/jax-ml/jax).**
 
