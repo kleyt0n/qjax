@@ -47,10 +47,7 @@ where $[\,\cdot\,]_+ = \max(\cdot, 0)$ is the Tsallis cut-off, $C_q$ the $q$-Gau
 - [A learnable `q`](#a-learnable-q)
 - [Label-noise robustness](#label-noise-robustness)
 - [Installation](#installation)
-- [Documentation](#documentation)
-- [Development](#development)
 - [Contributing](#contributing)
-- [Citing](#citing)
 - [License](#license)
 
 ## Quickstart
@@ -151,7 +148,7 @@ The figure trains a small 3-class classifier on two shapes (blobs, spiral) from 
 
 <img src="docs/_static/examples/classification_boundaries.png" alt="Decision boundaries for blobs and spiral across noise levels: Tsallis vs the Boltzmann-Gibbs-Shannon baseline" width="960"/>
 
-See the [classification example](docs/examples/classification.md) for the full setup.
+See the [classification example](examples/classification.py) for the full setup.
 
 ## Installation
 
