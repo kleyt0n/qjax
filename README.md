@@ -6,11 +6,11 @@
 
 **Tsallis statistics for artificial intelligence, built on [JAX](https://github.com/jax-ml/jax).**
 
-[![PyPI](https://img.shields.io/pypi/v/qjax.svg)](https://pypi.org/project/qjax/)
-[![Python](https://img.shields.io/badge/python-3.10%2B-3776ab.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-22863a.svg)](LICENSE)
-[![Built on JAX](https://img.shields.io/badge/built%20on-JAX-b73779.svg)](https://github.com/jax-ml/jax)
-[![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
+[![PyPI](https://img.shields.io/pypi/v/qjax.svg?style=flat-square)](https://pypi.org/project/qjax/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-3776ab.svg?style=flat-square)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-22863a.svg?style=flat-square)](LICENSE)
+[![Built on JAX](https://img.shields.io/badge/built%20on-JAX-b73779.svg?style=flat-square)](https://github.com/jax-ml/jax)
+[![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg?style=flat-square)](https://github.com/astral-sh/ruff)
 
 [Quickstart](#quickstart) • [Building blocks](#building-blocks) • [Example](#label-noise-robustness) • [Installation](#installation)
 
