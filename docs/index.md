@@ -2,6 +2,12 @@
 
 **Tsallis statistics for artificial intelligence, built on [JAX](https://github.com/jax-ml/jax).**
 
+[![PyPI](https://img.shields.io/pypi/v/qjax.svg?style=flat-square)](https://pypi.org/project/qjax/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-3776ab.svg?style=flat-square)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-22863a.svg?style=flat-square)](https://github.com/Kleyt0n/qjax/blob/main/LICENSE)
+[![Built on JAX](https://img.shields.io/badge/built%20on-JAX-b73779.svg?style=flat-square)](https://github.com/jax-ml/jax)
+[![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg?style=flat-square)](https://github.com/astral-sh/ruff)
+
 Tsallis (non-extensive) statistics generalizes Boltzmann–Gibbs–Shannon
 statistics through a single *entropic index* $q$. As $q \to 1$ every construction
 collapses back to its classical counterpart — Shannon entropy, the Gaussian,
