@@ -20,37 +20,7 @@
 
 Tsallis (non-extensive) statistics generalizes Boltzmann–Gibbs–Shannon statistics through a single *entropic index* $q$. As $q \to 1$ every construction collapses back to its classical counterpart — Shannon entropy, the Gaussian, softmax, the Kullback–Leibler divergence — while $q \neq 1$ opens up heavy tails, sparse attention, and tunable exploration.
 
-`qjax` exposes these $q$-deformed primitives as **pure, differentiable, `jit`/`vmap`-friendly** JAX functions. Because $q$ is just another argument, you can hold it fixed *or* **learn it end-to-end by gradient descent**.
-
-Every primitive is a single closed form in the entropic index $q$, and each recovers its Boltzmann–Gibbs–Shannon counterpart in the $q \to 1$ limit:
-
-| `qjax` | Definition | Limit $q \to 1$ |
-| --- | --- | --- |
-| `q_log` | $\ln_q x = \dfrac{x^{1-q} - 1}{1 - q}$ | $\ln x$ |
-| `q_exp` | $\exp_q x = \big[1 + (1-q)\,x\big]_+^{\frac{1}{1-q}}$ | $e^{x}$ |
-| `tsallis_entropy` | $S_q(p) = \dfrac{1 - \sum_i p_i^{\,q}}{q - 1}$ | $-\sum_i p_i \ln p_i$ |
-| `tsallis_cross_entropy` | $H_q(y, p) = -\sum_i y_i \ln_q p_i$ | $-\sum_i y_i \ln p_i$ |
-| `tsallis_divergence` | $D_q(p \,\Vert\, r) = \dfrac{\sum_i p_i^{\,q}\, r_i^{\,1-q} - 1}{q - 1}$ | $\mathrm{KL}(p \,\Vert\, r)$ |
-| `q_gaussian_pdf` | $\mathcal{G}_q(x) = \dfrac{\sqrt{\beta}}{C_q}\,\exp_q(-\beta x^2)$ | $\sqrt{\tfrac{\beta}{\pi}}\,e^{-\beta x^2}$ |
-| `tsallis_entmax` | $entmax_q(z) = \arg\max_{p \in \Delta}\,\langle p, z\rangle + S_q(p)$ | $softmax(z)$ |
-
-where $[\,\cdot\,]_+ = \max(\cdot, 0)$ is the Tsallis cut-off, $C_q$ the $q$-Gaussian normalization, and $\Delta$ the probability simplex
-(`tsallis_entmax` is exactly **sparsemax** at $q = 2$).
-
-> `qjax` is a research library. The numerics are tested across the $q \to 1$
-> limit, gradients, and `jit`/`vmap`, but the API may still evolve.
-
-## Contents
-
-- [Quickstart](#quickstart)
-- [Building blocks](#building-blocks)
-- [A learnable `q`](#a-learnable-q)
-- [Label-noise robustness](#label-noise-robustness)
-- [Installation](#installation)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Quickstart
+`qjax` exposes these $q$-deformed primitives as pure, differentiable, `jit`/`vmap`-friendly JAX functions. Because $q$ is just another argument, you can hold it fixed *or* learn it end-to-end by gradient descent.
 
 ```python
 import jax, jax.numpy as jnp
@@ -74,9 +44,34 @@ samples = qjax.sample(jax.random.PRNGKey(0), q=1.5, beta=1.0, shape=(1000,))
 qjax.tsallis_entmax(jnp.array([2.0, 1.0, -1.0]), q=2.0)
 ```
 
+## Contents
+
+- [Building blocks](#building-blocks)
+- [A learnable `q`](#a-learnable-q)
+- [Label-noise robustness](#label-noise-robustness)
+- [Installation](#installation)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Building blocks
 
-`qjax` is organized as a small set of composable, fully differentiable primitives. Each is a pure function of $(x, q)$.
+`qjax` is organized as a small set of composable, fully differentiable primitives. Each is a pure function of $(x, q)$. Every primitive is a single closed form in the entropic index $q$, and each recovers its Boltzmann–Gibbs–Shannon counterpart in the $q \to 1$ limit:
+
+| `qjax` | Definition | Limit $q \to 1$ |
+| --- | --- | --- |
+| `q_log` | $\ln_q x = \dfrac{x^{1-q} - 1}{1 - q}$ | $\ln x$ |
+| `q_exp` | $\exp_q x = \big[1 + (1-q)\,x\big]_+^{\frac{1}{1-q}}$ | $e^{x}$ |
+| `tsallis_entropy` | $S_q(p) = \dfrac{1 - \sum_i p_i^{\,q}}{q - 1}$ | $-\sum_i p_i \ln p_i$ |
+| `tsallis_cross_entropy` | $H_q(y, p) = -\sum_i y_i \ln_q p_i$ | $-\sum_i y_i \ln p_i$ |
+| `tsallis_divergence` | $D_q(p \,\Vert\, r) = \dfrac{\sum_i p_i^{\,q}\, r_i^{\,1-q} - 1}{q - 1}$ | $\mathrm{KL}(p \,\Vert\, r)$ |
+| `q_gaussian_pdf` | $\mathcal{G}_q(x) = \dfrac{\sqrt{\beta}}{C_q}\,\exp_q(-\beta x^2)$ | $\sqrt{\tfrac{\beta}{\pi}}\,e^{-\beta x^2}$ |
+| `tsallis_entmax` | $entmax_q(z) = \arg\max_{p \in \Delta}\,\langle p, z\rangle + S_q(p)$ | $softmax(z)$ |
+
+where $[\,\cdot\,]_+ = \max(\cdot, 0)$ is the Tsallis cut-off, $C_q$ the $q$-Gaussian normalization, and $\Delta$ the probability simplex
+(`tsallis_entmax` is exactly **sparsemax** at $q = 2$).
+
+> `qjax` is a research library. The numerics are tested across the $q \to 1$
+> limit, gradients, and `jit`/`vmap`, but the API may still evolve.
 
 ### Deformed functions and $q$-algebra
 
