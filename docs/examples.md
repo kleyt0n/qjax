@@ -26,6 +26,9 @@ uv run python examples/<name>.py
 * - [Label-noise robustness](examples/classification.md)
   - Bounded Tsallis cross-entropy (`q < 1`) vs. the Shannon baseline, and a
     *learnable* `q` that discovers the robust regime on its own.
+* - [Node classification under noise](examples/node_classification.md)
+  - A GCN with *learnable* Tsallis `q` stays robust to noisy training labels,
+    while the Shannon baseline propagates the errors across the graph.
 * - [Exploration on a bandit](examples/reinforcement_learning.md)
   - A `tsallis_entmax` policy whose *learnable* `q` anneals exploration into
     exploitation for the lowest cumulative regret.
@@ -39,13 +42,16 @@ uv run python examples/<name>.py
 
 ## The recurring theme: `q` as a learnable parameter
 
-Four of the six examples make `q` itself trainable, and the headline result is
+Five of the seven examples make `q` itself trainable, and the headline result is
 consistent: **gradient descent reliably discovers a useful entropic index**, with
 no grid search.
 
 - [**Classification**](examples/classification.md) — the learned loss `q` settles
   in the robust regime (`q ≈ 0.3`) and matches the best hand-tuned fixed `q` at
   every noise level.
+- [**Node classification**](examples/node_classification.md) — on a graph, the
+  learned GCN loss `q` settles in the robust regime and stays accurate as label
+  noise the Shannon baseline amplifies grows.
 - [**Attention**](examples/attention_mlp.md) — the learned attention `q`
   converges near sparsemax (`q ≈ 2.0`), zeroing out distractor tokens.
 - [**Reinforcement learning**](examples/reinforcement_learning.md) — the learned
@@ -59,6 +65,7 @@ examples/q_gaussian
 examples/learnable_q
 examples/optimization
 examples/classification
+examples/node_classification
 examples/reinforcement_learning
 examples/attention_mlp
 examples/attention_q_learning
