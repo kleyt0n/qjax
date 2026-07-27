@@ -145,7 +145,26 @@ The figure trains a small 3-class classifier on two shapes (blobs, spiral) from 
 
 See the [classification example](https://kleyt0n.github.io/qjax/examples/classification/) for the full setup.
 
-## Installation
+## Neural-network building blocks
+
+`qjax.nn` holds the pieces that every Tsallis model ends up needing. It is
+framework-agnostic — plain arrays and pytrees — so it composes with Flax,
+Equinox, Haiku, or hand-rolled JAX without pulling in any of them.
+
+```python
+from qjax.nn import bounded_q, entmax_attention, tsallis_cross_entropy_loss
+
+# Keep a learnable q inside its valid range, whatever the optimizer does.
+q = bounded_q(params["q_raw"], 1.0, 3.0)
+
+# Attention normalized by entmax instead of softmax.
+context, attn = entmax_attention(queries, keys, values, q=q)
+
+# A q-deformed classification loss; q < 1 bounds the penalty on bad labels.
+loss = tsallis_cross_entropy_loss(logits, targets, q=0.5, normalizer_q=1.0)
+```
+
+
 
 `qjax` requires Python 3.10+ and depends only on `jax` and `matplotlib`. It is managed with [uv](https://docs.astral.sh/uv/).
 

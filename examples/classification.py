@@ -13,7 +13,7 @@ labels — and vary a single knob: the entropic index ``q`` of the
   saturates on hard/mislabeled points, so clean-set accuracy degrades far more
   gracefully as noise rises.
 - **learnable ``q``**: rather than fixing ``q`` we make it a trainable parameter
-  optimized jointly with the network (``q = q_min + span * sigmoid(.)``).
+  optimized jointly with the network (``qjax.nn.bounded_q``).
   Minimizing the bounded Tsallis loss over the training set monotonically favors
   smaller ``q`` (it down-weights unfittable, noisy points), so ``q`` *descends to
   the robust end* of its allowed range. The upshot is practical: instead of
@@ -40,6 +40,7 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 
 import qjax
+from qjax.nn import bounded_q
 from qjax.plots import CMAP, qcolors, save_figure, use_qjax_style
 
 FIG_DIR = Path(__file__).parent / "figures"
@@ -50,11 +51,11 @@ HIDDEN = 128
 STEPS = 3000
 LR = 3e-3  # Adam step size
 
-# Learnable-q parameterization: q = Q_MIN + Q_SPAN * sigmoid(q_raw) in (0.3, 1.3),
+# Learnable-q parameterization: q = bounded_q(q_raw, Q_MIN, Q_MAX) in (0.3, 1.3),
 # spanning the robust (q < 1) and standard (q = 1) regimes. We start inside the
 # robust regime (q ~ 0.5): starting near Shannon (q ~ 1) lets the network
 # memorize the noise early, before q has annealed down.
-Q_MIN, Q_SPAN, Q_RAW_INIT = 0.3, 1.0, -1.4  # init q ~ 0.50
+Q_MIN, Q_MAX, Q_RAW_INIT = 0.3, 1.3, -1.4  # init q ~ 0.50
 
 # (label, q_fixed, is_learnable) — q = 1 is the Shannon baseline; q < 1 are robust.
 METHODS = (
@@ -99,7 +100,7 @@ def init_params(key: jax.Array) -> dict:
 def resolve_q(params: dict, q_fixed, is_learnable: bool):
     """Return the loss entropic index in use: a constant, or the learned one."""
     if is_learnable:
-        return Q_MIN + Q_SPAN * jax.nn.sigmoid(params["q_raw"])
+        return bounded_q(params["q_raw"], Q_MIN, Q_MAX)
     return q_fixed
 
 

@@ -35,6 +35,24 @@ installed version.
     options:
       heading_level: 3
 
+## Neural-network building blocks
+
+Framework-agnostic pieces for Tsallis models: everything here operates on plain
+arrays and pytrees, so it composes with Flax, Equinox, Haiku, or hand-rolled JAX
+without adding a dependency on any of them.
+
+::: qjax.nn.reparam
+    options:
+      heading_level: 3
+
+::: qjax.nn.attention
+    options:
+      heading_level: 3
+
+::: qjax.nn.losses
+    options:
+      heading_level: 3
+
 ## Shared — types, validation, and series
 
 ::: qjax.shared.types
