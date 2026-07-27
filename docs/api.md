@@ -35,13 +35,17 @@ installed version.
     options:
       heading_level: 3
 
-## Shared — types and validation
+## Shared — types, validation, and series
 
 ::: qjax.shared.types
     options:
       heading_level: 3
 
 ::: qjax.shared.validation
+    options:
+      heading_level: 3
+
+::: qjax.shared.series
     options:
       heading_level: 3
 
