@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Weekly, so the cross-platform legs still run during quiet periods.
+    - cron: "0 6 * * 1"
   workflow_call:
 
 permissions:
@@ -47,19 +50,15 @@ jobs:
         run: uv run mypy
 
   test:
-    runs-on: ${{ matrix.os }}
+    # Pull requests get the Linux interpreter matrix, which is where a
+    # regression almost always shows up first. macOS and Windows are the two
+    # slowest legs by a wide margin, so they move to `platforms` below and run
+    # after merge rather than on every push to a branch.
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
-        include:
-          # Spot-check the other platforms on one interpreter rather than
-          # multiplying the whole matrix by three.
-          - os: macos-latest
-            python-version: "3.12"
-          - os: windows-latest
-            python-version: "3.12"
     steps:
       - uses: actions/checkout@v7
       - name: Set up uv
@@ -68,14 +67,41 @@ jobs:
           enable-cache: true
       - name: Install dependencies
         run: uv sync --extra dev --python ${{ matrix.python-version }}
+      # Coverage instruments every call, so it is measured once rather than on
+      # all four legs; the others just run the suite.
       - name: Run tests
-        run: uv run pytest --cov=qjax --cov-report=term-missing --cov-report=xml
+        if: matrix.python-version != '3.12'
+        run: uv run pytest -n auto
+      - name: Run tests with coverage
+        if: matrix.python-version == '3.12'
+        run: uv run pytest -n auto --cov=qjax --cov-report=term-missing --cov-report=xml
       - name: Upload coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        if: matrix.python-version == '3.12'
         uses: codecov/codecov-action@v7
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
+
+  platforms:
+    # The cross-platform check. Skipped on pull requests, where it roughly
+    # doubled wall-clock for a signal that has never differed from Linux; it
+    # still gates every merge to main and runs on the weekly schedule.
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --extra dev --python 3.12
+      - name: Run tests
+        run: uv run pytest -n auto
 
   core-without-matplotlib:
     # The mathematics must stay importable without the optional plots extra.
