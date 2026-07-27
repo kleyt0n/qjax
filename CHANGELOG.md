@@ -109,9 +109,11 @@ model trained through it. Primal outputs for `q > 1` are unchanged to within
 - The version is single-sourced from `qjax.__version__` via `hatch`, instead of
   being duplicated in `pyproject.toml`.
 - `release.yaml` declared a `version` input and never used it, so a release
-  could ship whatever was in the tree. It is now verified against
-  `qjax.__version__`, and publishing uses PyPI Trusted Publishing (OIDC) rather
-  than a long-lived API token.
+  could ship whatever was in the tree. **Releases are now triggered by pushing a
+  `v*` git tag** rather than by `workflow_dispatch`: the tag is checked against
+  `qjax.__version__` before anything is built, and publishing uses PyPI Trusted
+  Publishing (OIDC) rather than a long-lived API token. The workflow no longer
+  creates the tag itself. See "Releasing" in `CONTRIBUTING.md`.
 - **The documentation moved from Sphinx/Read the Docs to Material for MkDocs**,
   built on the Docsforge template and published to GitHub Pages by
   `.github/workflows/docs.yaml`. The site is now at

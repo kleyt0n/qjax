@@ -122,6 +122,25 @@ uv run pytest
 CI (`.github/workflows/ci.yaml`) runs lint, the test matrix on Python
 3.10–3.13, and the documentation build on every push and pull request.
 
+## Releasing
+
+Releases are cut from an annotated `v*` tag on `main`; pushing the tag is the
+only step:
+
+```bash
+# 1. Bump qjax/__init__.py (__version__) and date the CHANGELOG section, on main.
+# 2. Tag the release commit and push the tag.
+git tag -a v0.2.0 -m "Release v0.2.0"
+git push origin v0.2.0
+```
+
+`.github/workflows/release.yaml` then verifies the tag matches
+`qjax.__version__` (a mismatch fails before anything is built), runs the full CI
+set, publishes to PyPI via Trusted Publishing, and creates the GitHub release
+with the built artifacts attached. To abandon a release that failed before
+publishing, delete the tag (`git push origin :v0.2.0`) and push a corrected one;
+a version already on PyPI cannot be reused.
+
 ## Reporting issues
 
 When filing a bug, please include a **minimal reproducible example**, the
