@@ -111,7 +111,13 @@ exclude_lines = [
 ]
 
 [tool.mypy]
-python_version = "3.10"
+# Deliberately not pinning `python_version` to the 3.10 floor. Doing so makes
+# mypy parse *third-party stubs* under 3.10 too, and modern stubs are written
+# against the newest Python: numpy 2.5's use PEP 695 `type` statements, which
+# 3.10 cannot parse, so the run dies before it reaches any qjax code. Following
+# the running interpreter avoids that. 3.10 compatibility is still enforced --
+# by ruff's `target-version = "py310"` for syntax, and by the 3.10 test leg for
+# runtime.
 files = ["qjax"]
 ignore_missing_imports = true
 warn_unused_ignores = true
