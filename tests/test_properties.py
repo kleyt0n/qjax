@@ -158,7 +158,23 @@ def test_divergence_matches_closed_form(p, q):
 
 # ---------------------------------------------------------------------------
 # entmax.
+#
+# These four dominated the suite (81s of ~100s) for a reason unrelated to what
+# they assert: passing `q` as a *closure constant* bakes it into the trace, so
+# JAX recompiled on every one of the 150 Hypothesis examples. Taking `q` as a
+# traced argument to a jitted helper means one compilation per input shape,
+# reused across every `q` -- the same computation, ~30x faster and bit-identical.
 # ---------------------------------------------------------------------------
+
+
+@jax.jit
+def _entmax(z, q):
+    return qjax.tsallis_entmax(z, q)
+
+
+@jax.jit
+def _entmax_jacobian(z, q):
+    return jax.jacobian(lambda t: qjax.tsallis_entmax(t, q))(z)
 
 
 @SETTINGS
@@ -167,7 +183,7 @@ def test_divergence_matches_closed_form(p, q):
     q=st.floats(min_value=0.2, max_value=3.0, allow_nan=False),
 )
 def test_entmax_is_a_distribution(z, q):
-    p = qjax.tsallis_entmax(jnp.asarray(z, dtype=jnp.float64), q)
+    p = _entmax(jnp.asarray(z, dtype=jnp.float64), jnp.asarray(q))
     assert np.isclose(float(jnp.sum(p)), 1.0, atol=1e-9)
     assert bool(jnp.all(p >= 0.0))
 
@@ -180,9 +196,8 @@ def test_entmax_is_a_distribution(z, q):
 )
 def test_entmax_is_shift_invariant(z, q, shift):
     zj = jnp.asarray(z, dtype=jnp.float64)
-    base = qjax.tsallis_entmax(zj, q)
-    shifted = qjax.tsallis_entmax(zj + shift, q)
-    assert bool(jnp.allclose(base, shifted, atol=1e-8))
+    qj = jnp.asarray(q)
+    assert bool(jnp.allclose(_entmax(zj, qj), _entmax(zj + shift, qj), atol=1e-8))
 
 
 @SETTINGS
@@ -191,8 +206,7 @@ def test_entmax_is_shift_invariant(z, q, shift):
     q=st.floats(min_value=0.3, max_value=2.8, allow_nan=False),
 )
 def test_entmax_jacobian_is_symmetric(z, q):
-    zj = jnp.asarray(z, dtype=jnp.float64)
-    jac = jax.jacobian(lambda t: qjax.tsallis_entmax(t, q))(zj)
+    jac = _entmax_jacobian(jnp.asarray(z, dtype=jnp.float64), jnp.asarray(q))
     assert bool(jnp.allclose(jac, jac.T, atol=1e-10))
 
 
@@ -203,9 +217,9 @@ def test_entmax_jacobian_is_symmetric(z, q):
 )
 def test_entmax_jacobian_matches_closed_form(z, q):
     zj = jnp.asarray(z, dtype=jnp.float64)
-    p = np.asarray(qjax.tsallis_entmax(zj, q))
+    qj = jnp.asarray(q)
+    p = np.asarray(_entmax(zj, qj))
     support = p > 0.0
     s = np.where(support, np.where(support, p, 1.0) ** (2.0 - q), 0.0)
     expected = np.diag(s) - np.outer(s, s) / s.sum()
-    jac = np.asarray(jax.jacobian(lambda t: qjax.tsallis_entmax(t, q))(zj))
-    assert np.allclose(jac, expected, atol=1e-9)
+    assert np.allclose(np.asarray(_entmax_jacobian(zj, qj)), expected, atol=1e-9)
