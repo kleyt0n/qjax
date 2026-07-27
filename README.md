@@ -6,10 +6,11 @@
 
 **Tsallis statistics for artificial intelligence, built on [JAX](https://github.com/jax-ml/jax).**
 
-[![PyPI](https://img.shields.io/pypi/v/qjax.svg?style=flat-square)](https://pypi.org/project/qjax/)
+[![PyPI](https://img.shields.io/pypi/v/qjax.svg?style=flat-square&color=1a759f)](https://pypi.org/project/qjax/)
+[![Docs](https://img.shields.io/badge/docs-kleyt0n.github.io%2Fqjax-1a759f.svg?style=flat-square)](https://kleyt0n.github.io/qjax/)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776ab.svg?style=flat-square)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-22863a.svg?style=flat-square)](LICENSE)
-[![Built on JAX](https://img.shields.io/badge/built%20on-JAX-b73779.svg?style=flat-square)](https://github.com/jax-ml/jax)
+[![License: MIT](https://img.shields.io/badge/license-MIT-1e6091.svg?style=flat-square)](LICENSE)
+[![Built on JAX](https://img.shields.io/badge/built%20on-JAX-184e77.svg?style=flat-square)](https://github.com/jax-ml/jax)
 [![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg?style=flat-square)](https://github.com/astral-sh/ruff)
 
 [Quickstart](#quickstart) • [Building blocks](#building-blocks) • [Example](#label-noise-robustness) • [Installation](#installation)
@@ -106,12 +107,14 @@ qjax.sample(jax.random.PRNGKey(0), q=1.5, beta=1.0, shape=(1000,))
 
 ### Sparse activations
 
-`tsallis_entmax` interpolates between dense softmax ($q = 1$) and sparsemax
-($q = 2$), producing exact zeros for $q > 1$ — a drop-in for sparse attention.
+`tsallis_entmax` spans the whole family: $q = 1$ is softmax, $q = 2$ is sparsemax
+(exact zeros), larger $q$ is sparser still, and $q < 1$ is *denser* than softmax.
+A drop-in for sparse attention, with exact gradients w.r.t. both $z$ and $q$.
 
 ```python
 z = jnp.array([2.0, 1.0, 0.1, -1.0])
-qjax.tsallis_entmax(z, q=1.0)   # softmax (dense)
+qjax.tsallis_entmax(z, q=0.5)   # denser than softmax
+qjax.tsallis_entmax(z, q=1.0)   # softmax
 qjax.tsallis_entmax(z, q=2.0)   # sparsemax (exact zeros)
 ```
 
@@ -164,15 +167,16 @@ context, attn = entmax_attention(queries, keys, values, q=q)
 loss = tsallis_cross_entropy_loss(logits, targets, q=0.5, normalizer_q=1.0)
 ```
 
+## Installation
 
-
-`qjax` requires Python 3.10+ and depends only on `jax` and `matplotlib`. It is managed with [uv](https://docs.astral.sh/uv/).
+`qjax` requires Python 3.10+ and depends only on `jax`. Plotting is optional. It is managed with [uv](https://docs.astral.sh/uv/).
 
 | Use case            | Command                                              |
 | ------------------- | ---------------------------------------------------- |
 | As a dependency     | `uv add qjax`                                        |
-| Development         | `uv sync --extra dev`    (tests + linter)            |
-| Building the docs   | `uv sync --extra docs`   (Sphinx + Furo)             |
+| With plotting       | `uv add "qjax[plots]"`   (adds matplotlib)           |
+| Development         | `uv sync --extra dev`    (tests + linter + mypy)     |
+| Building the docs   | `uv sync --extra docs`   (Material for MkDocs)       |
 
 For GPU/TPU acceleration, install the matching JAX build by following the [JAX installation guide](https://docs.jax.dev/en/latest/installation.html).
 
