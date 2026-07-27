@@ -37,18 +37,18 @@ from qjax.plots import CMAP, qcolors, save_figure, use_qjax_style
 
 FIG_DIR = Path(__file__).parent / "figures"
 
-D_MODEL = 16          # token / model dimension
-NUM_CLASSES = 4       # class prototypes live on basis axes 0..C-1
-K_SIGNAL = 3          # informative tokens per sequence
-PROTO_SCALE = 2.5     # magnitude of the class-prototype component
-MARKER_SCALE = 2.5    # magnitude of the shared "informative" marker direction
-NOISE_STD = 1.0       # per-feature Gaussian noise
+D_MODEL = 16  # token / model dimension
+NUM_CLASSES = 4  # class prototypes live on basis axes 0..C-1
+K_SIGNAL = 3  # informative tokens per sequence
+PROTO_SCALE = 2.5  # magnitude of the class-prototype component
+MARKER_SCALE = 2.5  # magnitude of the shared "informative" marker direction
+NOISE_STD = 1.0  # per-feature Gaussian noise
 SEQ_LENGTHS = (4, 8, 16, 32)
-VIZ_LENGTH = 16       # sequence length used for the attention-map panels
+VIZ_LENGTH = 16  # sequence length used for the attention-map panels
 SEEDS = (0, 1, 2)
 STEPS = 5000
 LR = 5e-3
-ENTMAX_ITERS = 25     # bisection steps inside entmax during training
+ENTMAX_ITERS = 25  # bisection steps inside entmax during training
 
 # Learnable-q parameterization: q = Q_MIN + Q_SPAN * sigmoid(q_raw) in (1.1, 2.8),
 # kept strictly above 1 to avoid the softmax singularity of the entmax solver.
@@ -117,10 +117,10 @@ def forward(params: dict, x: jnp.ndarray, q):
     """Return class logits and the attention weights for a batch of sequences."""
     keys = x @ params["w_key"]
     values = x @ params["w_val"]
-    scores = keys @ params["query"] / jnp.sqrt(D_MODEL)        # (n, L)
+    scores = keys @ params["query"] / jnp.sqrt(D_MODEL)  # (n, L)
     attn = qjax.tsallis_entmax(scores, q=q, axis=-1, num_iters=ENTMAX_ITERS)
-    context = jnp.einsum("nl,nld->nd", attn, values)           # (n, D)
-    logits = context @ params["w_out"] + params["b_out"]       # (n, C)
+    context = jnp.einsum("nl,nld->nd", attn, values)  # (n, D)
+    logits = context @ params["w_out"] + params["b_out"]  # (n, C)
     return logits, attn
 
 
@@ -144,7 +144,9 @@ def train(params: dict, x, y_onehot, q_fixed, is_learnable: bool):
         bc1, bc2 = 1 - b1 ** (t + 1), 1 - b2 ** (t + 1)
         params = jax.tree_util.tree_map(
             lambda p, m, v: p - LR * (m / bc1) / (jnp.sqrt(v / bc2) + eps),
-            params, m, v,
+            params,
+            m,
+            v,
         )
         return (params, m, v), resolve_q(params, q_fixed, is_learnable)
 
@@ -188,9 +190,9 @@ def main() -> None:
     acc = {label: [] for label in labels}
     acc_se = {label: [] for label in labels}
     mass = {label: [] for label in labels}
-    learned_q = []          # mean learned q per sequence length
-    q_trajectories = {}     # length -> learned q trajectory (seed 0)
-    viz = {}                # label -> (params, resolved_q) at VIZ_LENGTH, seed 0
+    learned_q = []  # mean learned q per sequence length
+    q_trajectories = {}  # length -> learned q trajectory (seed 0)
+    viz = {}  # label -> (params, resolved_q) at VIZ_LENGTH, seed 0
 
     for length in SEQ_LENGTHS:
         per_acc = {label: [] for label in labels}

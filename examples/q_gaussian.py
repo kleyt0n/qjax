@@ -34,9 +34,7 @@ def main() -> None:
         # pile up as spikes at the plot edges.
         samples = samples[jnp.abs(samples) <= 6.0]
         ax_hist.hist(samples, bins=120, density=True, color=color, alpha=0.35)
-        ax_hist.plot(
-            x_grid, qjax.q_gaussian_pdf(x_grid, q, 1.0), color=color, label=f"q = {q:g}"
-        )
+        ax_hist.plot(x_grid, qjax.q_gaussian_pdf(x_grid, q, 1.0), color=color, label=f"q = {q:g}")
     ax_hist.set(xlabel="x", ylabel="density", title="samples vs. density")
     ax_hist.legend()
 

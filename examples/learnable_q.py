@@ -49,8 +49,10 @@ def main() -> None:
 
     q_final = 1.0 + 2.0 * jax.nn.sigmoid(params["q_raw"])
     beta_final = jax.nn.softplus(params["beta_raw"]) + 1e-3
-    print(f"recovered q={float(q_final):.3f} (true {q_true}), "
-          f"beta={float(beta_final):.3f} (true {beta_true})")
+    print(
+        f"recovered q={float(q_final):.3f} (true {q_true}), "
+        f"beta={float(beta_final):.3f} (true {beta_true})"
+    )
 
     losses, q_hats = zip(*history, strict=False)
     fig, (ax_loss, ax_q) = plt.subplots(1, 2, figsize=(12, 4.5))
