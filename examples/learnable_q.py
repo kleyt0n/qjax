@@ -16,6 +16,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 import qjax
+from qjax.nn import bounded_q
 from qjax.plots import save_figure, use_qjax_style
 
 FIG_DIR = Path(__file__).parent / "figures"
@@ -23,9 +24,9 @@ FIG_DIR = Path(__file__).parent / "figures"
 
 def neg_log_likelihood(params: dict, x: jnp.ndarray) -> jnp.ndarray:
     """Mean negative q-Gaussian log-likelihood of ``x`` under ``params``."""
-    # softplus keeps beta > 0; q is constrained to (1, 3) via a scaled sigmoid.
+    # softplus keeps beta > 0; bounded_q constrains q to (1, 3).
     beta = jax.nn.softplus(params["beta_raw"]) + 1e-3
-    q = 1.0 + 2.0 * jax.nn.sigmoid(params["q_raw"])
+    q = bounded_q(params["q_raw"], 1.0, 3.0)
     return -jnp.mean(qjax.q_gaussian_logpdf(x, q, beta))
 
 
@@ -42,12 +43,12 @@ def main() -> None:
     for step in range(400):
         loss, grads = loss_and_grad(params, data)
         params = {k: v - lr * grads[k] for k, v in params.items()}
-        q_hat = float(1.0 + 2.0 * jax.nn.sigmoid(params["q_raw"]))
+        q_hat = float(bounded_q(params["q_raw"], 1.0, 3.0))
         history.append((float(loss), q_hat))
         if step % 100 == 0:
             print(f"step {step:3d}  loss={loss:.4f}  q_hat={q_hat:.4f}")
 
-    q_final = 1.0 + 2.0 * jax.nn.sigmoid(params["q_raw"])
+    q_final = bounded_q(params["q_raw"], 1.0, 3.0)
     beta_final = jax.nn.softplus(params["beta_raw"]) + 1e-3
     print(
         f"recovered q={float(q_final):.3f} (true {q_true}), "

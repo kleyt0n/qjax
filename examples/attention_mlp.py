@@ -9,7 +9,7 @@ attention map ``tsallis_entmax(scores, q)``:
 - ``q > 1`` is **entmax / sparsemax** attention (sparse): irrelevant positions
   are assigned *exactly* zero weight.
 - **learnable ``q``**: instead of fixing ``q`` we make it a trainable parameter
-  (``q = q_min + span * sigmoid(.)``) and let gradient descent discover the
+  (``qjax.nn.bounded_q``) and let gradient descent discover the
   attention sparsity that best fits the task — the library's central thesis that
   ``q`` is just another differentiable parameter.
 
@@ -33,6 +33,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 import qjax
+from qjax.nn import bounded_q
 from qjax.plots import CMAP, qcolors, save_figure, use_qjax_style
 
 FIG_DIR = Path(__file__).parent / "figures"
@@ -50,9 +51,9 @@ STEPS = 5000
 LR = 5e-3
 ENTMAX_ITERS = 25  # bisection steps inside entmax during training
 
-# Learnable-q parameterization: q = Q_MIN + Q_SPAN * sigmoid(q_raw) in (1.1, 2.8),
+# Learnable-q parameterization: q = bounded_q(q_raw, Q_MIN, Q_MAX) in (1.1, 2.8),
 # kept strictly above 1 to avoid the softmax singularity of the entmax solver.
-Q_MIN, Q_SPAN, Q_RAW_INIT = 1.1, 1.7, -1.0
+Q_MIN, Q_MAX, Q_RAW_INIT = 1.1, 2.8, -1.0
 
 # (label, q_fixed, is_learnable) — q = 1 is softmax; learnable q is trained.
 METHODS = (
@@ -109,7 +110,7 @@ def init_params(key: jax.Array) -> dict:
 def resolve_q(params: dict, q_fixed, is_learnable: bool):
     """Return the entropic index in use: a constant, or the learned one."""
     if is_learnable:
-        return Q_MIN + Q_SPAN * jax.nn.sigmoid(params["q_raw"])
+        return bounded_q(params["q_raw"], Q_MIN, Q_MAX)
     return q_fixed
 
 

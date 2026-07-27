@@ -36,6 +36,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 import qjax
+from qjax.nn import bounded_q
 from qjax.plots import qcolors, save_figure, use_qjax_style
 
 FIG_DIR = Path(__file__).parent / "figures"
@@ -49,10 +50,10 @@ LR_Q = 0.05
 BASELINE_RATE = 0.05
 POLICY_ITERS = 30  # entmax bisection steps
 
-# Learnable-q parameterization: q = Q_MIN + Q_SPAN * sigmoid(q_raw) in (1.05, 2.55).
+# Learnable-q parameterization: q = bounded_q(q_raw, Q_MIN, Q_MAX) in (1.05, 2.55).
 # Start near full exploration (q ~ 1.1, almost softmax); REINFORCE then raises q,
 # annealing exploration -> exploitation as the best arm becomes clear.
-Q_MIN, Q_SPAN, Q_RAW_INIT = 1.05, 1.5, -2.5  # init q ~ 1.16
+Q_MIN, Q_MAX, Q_RAW_INIT = 1.05, 2.55, -2.5  # init q ~ 1.16
 
 # (label, q_fixed, is_learnable)
 METHODS = (
@@ -66,7 +67,7 @@ METHODS = (
 def resolve_q(q_raw, q_fixed, is_learnable: bool):
     """Return the policy entropic index: a constant, or the learned one."""
     if is_learnable:
-        return Q_MIN + Q_SPAN * jax.nn.sigmoid(q_raw)
+        return bounded_q(q_raw, Q_MIN, Q_MAX)
     return q_fixed
 
 

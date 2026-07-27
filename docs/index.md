@@ -166,6 +166,7 @@ wrong-class islands while Tsallis keeps clean regions and higher accuracy.
 | [`qjax.core.entropy`](api.md#core-entropy-and-divergences) | `tsallis_entropy`, `tsallis_cross_entropy`, `tsallis_divergence` |
 | [`qjax.core.distributions`](api.md#core-the-q-gaussian-distribution) | the $q$-Gaussian: `q_gaussian_pdf`, `q_gaussian_logpdf`, `sample`, `normalization` |
 | [`qjax.core.activations`](api.md#core-activations-entmax) | `tsallis_entmax` (the $q$-deformed softmax / sparsemax family) |
+| [`qjax.nn`](api.md#neural-network-building-blocks) | framework-agnostic pieces: `bounded_q`, attention, losses |
 | [`qjax.plots`](api.md#plots) | brand-ramp, publication-grade plotting helpers |
 
 ## Next steps
