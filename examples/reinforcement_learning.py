@@ -37,7 +37,7 @@ import matplotlib.pyplot as plt
 
 import qjax
 from qjax.nn import bounded_q
-from qjax.plots import qcolors, save_figure, use_qjax_style
+from qjax.plots import qcolors, qlinestyles, save_figure, use_qjax_style
 
 FIG_DIR = Path(__file__).parent / "figures"
 
@@ -153,19 +153,24 @@ def main() -> None:
         2, 2, figsize=(12.0, 8.6), layout="constrained"
     )
     colors = qcolors(len(METHODS))
+    # The brand ramp is sequential, so four methods land on colors too close to
+    # separate reliably (the two darkest differ by well under the readability
+    # floor). Dash patterns carry the identity; color is the secondary cue. This
+    # also keeps the panel readable in grayscale print.
+    dashes = qlinestyles(len(METHODS))
     steps = jnp.arange(STEPS)
     sm_x = jnp.arange(24, STEPS)  # x for smoothed (window 25) curves
 
-    for label, color in zip(labels, colors, strict=False):
+    for label, color, dash in zip(labels, colors, dashes, strict=False):
         mean, se = reward_curve[label]
-        ax_r.plot(sm_x, smooth(mean), color=color, label=label)
+        ax_r.plot(sm_x, smooth(mean), color=color, ls=dash, label=label)
         ax_r.fill_between(sm_x, smooth(mean - se), smooth(mean + se), color=color, alpha=0.15)
 
         rmean, rse = regret_curve[label]
-        ax_reg.plot(steps, rmean, color=color, label=label)
+        ax_reg.plot(steps, rmean, color=color, ls=dash, label=label)
         ax_reg.fill_between(steps, rmean - rse, rmean + rse, color=color, alpha=0.15)
 
-        ax_opt.plot(sm_x, 100.0 * smooth(optimal_curve[label]), color=color, label=label)
+        ax_opt.plot(sm_x, 100.0 * smooth(optimal_curve[label]), color=color, ls=dash, label=label)
 
     ax_r.axhline(avg_best, color="0.4", ls=":", lw=1.0, label="best arm")
     ax_r.set(xlabel="step", ylabel="average reward", title="(a) average reward")

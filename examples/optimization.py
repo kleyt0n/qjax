@@ -27,6 +27,7 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 import matplotlib.animation as animation
+import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -82,8 +83,11 @@ def optimize(key: jax.Array, q: float):
 def main() -> None:
     use_qjax_style()
     key = jax.random.PRNGKey(0)
-    # High-contrast, non-magma path colors so they pop against the surface.
-    colors = ("#19d3f3", "#7cfc00")  # cyan, lime
+    # The surface is filled with the (green-blue) qjax ramp, so the paths are
+    # warm and deliberately off-ramp: hue alone separates them from the backdrop.
+    # Luminance cannot, because the ramp spans nearly the full lightness range —
+    # hence the contrasting stroke added to every path artist below.
+    colors = ("#f7b267", "#d1495b")  # amber, crimson
 
     runs = {}
     for q in QS:
@@ -123,12 +127,15 @@ def main() -> None:
 
     # --- dynamic artists, per q ---
     pop_scatter, path2d, head2d, path3d, head3d = {}, {}, {}, {}, {}
+    halo = [path_effects.withStroke(linewidth=3.6, foreground="white")]
     for q, color in zip(QS, colors, strict=False):
         label = f"$q={q:g}$ (BGS)" if q == 1.0 else f"$q={q:g}$ (Tsallis)"
         pop_scatter[q] = ax2d.scatter([], [], s=6, color=color, alpha=0.35, zorder=3)
-        (path2d[q],) = ax2d.plot([], [], color=color, lw=2.0, zorder=4, label=label)
+        (path2d[q],) = ax2d.plot(
+            [], [], color=color, lw=2.0, zorder=4, label=label, path_effects=halo
+        )
         (head2d[q],) = ax2d.plot([], [], "o", color=color, mec="k", ms=7, zorder=6)
-        (path3d[q],) = ax3d.plot([], [], [], color=color, lw=2.5)
+        (path3d[q],) = ax3d.plot([], [], [], color=color, lw=2.5, path_effects=halo)
         (head3d[q],) = ax3d.plot([], [], [], "o", color=color, mec="k", ms=6)
     ax2d.legend(loc="upper left")
 

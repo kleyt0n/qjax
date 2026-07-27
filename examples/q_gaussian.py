@@ -21,7 +21,7 @@ def main() -> None:
     use_qjax_style()
     fig, (ax_pdf, ax_hist) = plt.subplots(1, 2, figsize=(12, 4.5))
 
-    # Left: the density family across q (magma-colored).
+    # Left: the density family across q (ramp-colored).
     plot_q_gaussian(q_values=(0.5, 1.0, 1.5, 2.0, 2.5), beta=1.0, ax=ax_pdf)
 
     # Right: histogram of samples (1 <= q < 3) overlaid on the analytic density.
