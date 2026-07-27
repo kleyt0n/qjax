@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 import pytest
+from jax.test_util import check_grads
 
 from qjax.core.entropy import tsallis_cross_entropy, tsallis_divergence, tsallis_entropy
 
@@ -109,3 +110,64 @@ def test_cross_entropy_infinite_on_zero_true_class():
     p = jnp.array([0.0, 1.0])
     y = jnp.array([1.0, 0.0])
     assert jnp.isposinf(tsallis_cross_entropy(p, y, 1.0))
+
+
+# ---------------------------------------------------------------------------
+# Gradient correctness, and the divergence's zero-reference asymmetry.
+# ---------------------------------------------------------------------------
+
+P = jnp.array([0.5, 0.3, 0.2])
+R = jnp.array([0.4, 0.4, 0.2])
+Y = jnp.array([1.0, 0.0, 0.0])
+
+
+@pytest.mark.parametrize("q", [0.5, 1.0, 1.5, 2.0])
+def test_check_grads_entropy(q):
+    check_grads(tsallis_entropy, (P, jnp.asarray(q)), order=2, modes=["fwd", "rev"], eps=1e-6)
+
+
+@pytest.mark.parametrize("q", [0.5, 1.0, 1.5, 2.0])
+def test_check_grads_divergence(q):
+    check_grads(
+        lambda p, r: tsallis_divergence(p, r, q), (P, R), order=2, modes=["fwd", "rev"], eps=1e-6
+    )
+
+
+@pytest.mark.parametrize("q", [0.5, 1.0, 1.5, 2.0])
+def test_check_grads_cross_entropy(q):
+    check_grads(
+        lambda p: tsallis_cross_entropy(p, Y, q), (P,), order=2, modes=["fwd", "rev"], eps=1e-6
+    )
+
+
+def test_entropy_dq_gradient_nonzero_at_q_one():
+    # Regression: the near-one branch is q-independent, so d/dq used to be an
+    # exact zero at q = 1 while the true derivative is nonzero.
+    grad = jax.grad(lambda q: tsallis_entropy(P, q))(1.0)
+    eps = 1e-4
+    numeric = (tsallis_entropy(P, 1.0 + eps) - tsallis_entropy(P, 1.0 - eps)) / (2 * eps)
+    assert jnp.allclose(grad, numeric, atol=1e-6)
+    assert not jnp.allclose(grad, 0.0)
+
+
+@pytest.mark.parametrize("q", [0.5, 1.5, 2.0, 2.5])
+def test_divergence_gradient_finite_with_zero_reference(q):
+    # Regression: the KL branch guarded its zeros but the deformed branch did
+    # not, so `r ** (1-q)` = `0 ** negative` back-propagated NaN.
+    p = jnp.array([0.5, 0.5])
+    r = jnp.array([1.0, 0.0])
+    assert jnp.all(jnp.isfinite(jax.grad(lambda t: tsallis_divergence(t, r, q))(p)))
+    r_interior = jnp.array([0.6, 0.4])
+    p_zero = jnp.array([0.0, 1.0])
+    assert jnp.all(jnp.isfinite(jax.grad(lambda t: tsallis_divergence(p_zero, t, q))(r_interior)))
+
+
+def test_divergence_zero_reference_value_convention():
+    # p puts mass where r puts none: divergent for q > 1, finite for q < 1
+    # (the exponent 1-q is then positive, so the term vanishes).
+    p = jnp.array([0.5, 0.5])
+    r = jnp.array([1.0, 0.0])
+    assert tsallis_divergence(p, r, 2.0) == jnp.inf
+    assert jnp.isfinite(tsallis_divergence(p, r, 0.5))
+    # p puts no mass where r puts none: the term drops out entirely.
+    assert jnp.isfinite(tsallis_divergence(jnp.array([1.0, 0.0]), r, 2.0))
