@@ -161,7 +161,7 @@ def accuracy(params: dict, x, y) -> float:
 # and optimizer; only ``q`` differs (and ``q = 1`` is exactly Shannon).
 # --------------------------------------------------------------------------- #
 BND_CLASSES, BND_HIDDEN, BND_STEPS, BND_LR = 3, (64, 64), 3400, 5e-3
-BND_TEAL = "#0e8f86"  # accent framing the Tsallis (robust) columns
+BND_TEAL = "#168aad"  # brand accent framing the Tsallis (robust) columns
 BND_COLS = (
     ("BGS", 1.0, 0.0),
     ("Tsallis", 0.3, 0.0),

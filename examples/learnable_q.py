@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 import qjax
 from qjax.nn import bounded_q
-from qjax.plots import save_figure, use_qjax_style
+from qjax.plots import qcolors, save_figure, use_qjax_style
 
 FIG_DIR = Path(__file__).parent / "figures"
 
@@ -57,9 +57,9 @@ def main() -> None:
 
     losses, q_hats = zip(*history, strict=False)
     fig, (ax_loss, ax_q) = plt.subplots(1, 2, figsize=(12, 4.5))
-    ax_loss.plot(losses, color="#bc3754")
+    ax_loss.plot(losses, color=qcolors(1)[0])
     ax_loss.set(xlabel="step", ylabel="negative log-likelihood", title="optimization")
-    ax_q.plot(q_hats, color="#bc3754", label=r"$\hat q$")
+    ax_q.plot(q_hats, color=qcolors(1)[0], label=r"$\hat q$")
     ax_q.axhline(q_true, color="0.4", ls="--", label=r"$q_\mathrm{true}$")
     ax_q.set(xlabel="step", ylabel="q", title="recovering q")
     ax_q.legend()
