@@ -1,0 +1,53 @@
+cff-version: 1.2.0
+title: "qjax: Tsallis statistics for artificial intelligence, built on JAX"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: "da Costa"
+    given-names: "Kleyton"
+    email: "kleyton.costa@holisticai.com"
+repository-code: "https://github.com/Kleyt0n/qjax"
+url: "https://kleyt0n.github.io/qjax/"
+license: MIT
+version: 0.2.0
+keywords:
+  - Tsallis statistics
+  - non-extensive entropy
+  - JAX
+  - machine learning
+  - entmax
+references:
+  - type: book
+    authors:
+      - family-names: "Tsallis"
+        given-names: "Constantino"
+    title: "Introduction to Nonextensive Statistical Mechanics: Approaching a Complex World"
+    publisher:
+      name: "Springer"
+    year: 2009
+    doi: "10.1007/978-0-387-85359-8"
+  - type: article
+    authors:
+      - family-names: "Peters"
+        given-names: "Ben"
+      - family-names: "Niculae"
+        given-names: "Vlad"
+      - family-names: "Martins"
+        given-names: "André F. T."
+    title: "Sparse Sequence-to-Sequence Models"
+    year: 2019
+    doi: "10.18653/v1/P19-1146"
+  - type: article
+    authors:
+      - family-names: "Thistleton"
+        given-names: "William"
+      - family-names: "Marsh"
+        given-names: "John A."
+      - family-names: "Nelson"
+        given-names: "Kenric"
+      - family-names: "Tsallis"
+        given-names: "Constantino"
+    title: "Generalized Box-Muller Method for Generating q-Gaussian Random Deviates"
+    journal: "IEEE Transactions on Information Theory"
+    year: 2007
+    doi: "10.1109/TIT.2007.907077"
