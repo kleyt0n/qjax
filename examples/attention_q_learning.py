@@ -165,7 +165,7 @@ def main() -> None:
     gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.15], wspace=0.25)
     ax_q = fig.add_subplot(gs[0, 0])
     ax_att = fig.add_subplot(gs[0, 1])
-    color = qcolors(3)[1]  # mid-magma for the q curve
+    color = qcolors(1)[0]  # mid-ramp for the q curve
 
     ax_q.plot(q_hist, color=color, alpha=0.35, lw=1.5)
     ax_q.axhline(2.0, color="0.4", ls=":", lw=1.0)

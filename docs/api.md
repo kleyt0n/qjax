@@ -67,7 +67,6 @@ without adding a dependency on any of them.
     options:
       heading_level: 3
 
-
 ## Plots
 
 Plotting requires the optional `plots` extra: `pip install "qjax[plots]"`.

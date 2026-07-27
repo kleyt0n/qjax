@@ -1,4 +1,4 @@
-"""Plotting helpers for qjax, themed with the ``magma`` colormap.
+"""Plotting helpers for qjax, themed with the brand ramp.
 
 Matplotlib is an optional dependency: importing ``qjax`` for the mathematics
 does not pull it in. Install it with the ``plots`` extra::
@@ -16,11 +16,22 @@ except ImportError as exc:  # pragma: no cover - exercised only without matplotl
 
 from qjax.plots.distributions import plot_q_gaussian
 from qjax.plots.functions import plot_q_exp, plot_q_log
-from qjax.plots.style import CMAP, qcolors, save_figure, use_qjax_style
+from qjax.plots.style import (
+    CMAP,
+    QJAX_RAMP,
+    QLINESTYLES,
+    qcolors,
+    qlinestyles,
+    save_figure,
+    use_qjax_style,
+)
 
 __all__ = [
     "CMAP",
+    "QJAX_RAMP",
+    "QLINESTYLES",
     "qcolors",
+    "qlinestyles",
     "use_qjax_style",
     "save_figure",
     "plot_q_log",
