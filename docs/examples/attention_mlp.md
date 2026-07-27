@@ -43,20 +43,16 @@ code trains the sparsity end-to-end.
 
 ## Result
 
-```{figure} /_static/examples/attention_mlp.png
-:alt: accuracy and attention focus vs sequence length, learned q, and attention maps
-:width: 100%
-
-(a) Clean accuracy vs. sequence length (distractor count grows). (b) Fraction of
-attention mass placed on informative tokens. (c) The learned `q` over training,
-converging near sparsemax. (d–f) Attention maps (examples × positions) for
-softmax, sparsemax, and the learnable `q` — white outlines mark the ground-truth
-informative tokens; sparse attention zeroes out the noise.
-```
+<figure markdown>
+  ![accuracy and attention focus vs sequence length, learned q, and attention maps](../img/examples/attention_mlp.png)
+  <figcaption markdown>
+  (a) Clean accuracy vs. sequence length (distractor count grows). (b) Fraction of attention mass placed on informative tokens. (c) The learned `q` over training, converging near sparsemax. (d–f) Attention maps (examples × positions) for softmax, sparsemax, and the learnable `q` — white outlines mark the ground-truth informative tokens; sparse attention zeroes out the noise.
+  </figcaption>
+</figure>
 
 ## Takeaways
 
-{func}`~qjax.tsallis_entmax` is a one-line, differentiable replacement for the
+`qjax.tsallis_entmax` is a one-line, differentiable replacement for the
 softmax in attention, with `q` controlling sparsity. Sparse attention ($q > 1$)
 ignores distractor tokens, so accuracy holds up as the sequences grow, and a
 **learnable `q`** converges near sparsemax ($q \approx 2$) on its own — the same

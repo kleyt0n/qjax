@@ -24,28 +24,29 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import qjax
+from qjax.nn import bounded_q
 from qjax.plots import CMAP, qcolors, save_figure, use_qjax_style
 
 FIG_DIR = Path(__file__).parent / "figures"
 
-D_MODEL = 16          # token / model dimension
-NUM_CLASSES = 4       # class prototypes live on basis axes 0..C-1
-K_SIGNAL = 3          # informative tokens per sequence
-PROTO_SCALE = 2.5     # magnitude of the class-prototype component
-MARKER_SCALE = 2.5    # magnitude of the shared "informative" marker direction
-NOISE_STD = 1.0       # per-feature Gaussian noise
-SEQ_LENGTH = 16       # sequence length
+D_MODEL = 16  # token / model dimension
+NUM_CLASSES = 4  # class prototypes live on basis axes 0..C-1
+K_SIGNAL = 3  # informative tokens per sequence
+PROTO_SCALE = 2.5  # magnitude of the class-prototype component
+MARKER_SCALE = 2.5  # magnitude of the shared "informative" marker direction
+NOISE_STD = 1.0  # per-feature Gaussian noise
+SEQ_LENGTH = 16  # sequence length
 N_TRAIN = 512
-N_VIZ = 18            # sequences shown in the attention-map panel
+N_VIZ = 18  # sequences shown in the attention-map panel
 STEPS = 4000
 LR = 5e-3
-ENTMAX_ITERS = 25     # bisection steps inside entmax
-NUM_FRAMES = 140      # animation frames (front-loaded over training)
-GIF_DPI = 150         # render resolution of the animation
+ENTMAX_ITERS = 25  # bisection steps inside entmax
+NUM_FRAMES = 140  # animation frames (front-loaded over training)
+GIF_DPI = 150  # render resolution of the animation
 
-# Learnable-q parameterization: q = Q_MIN + Q_SPAN * sigmoid(q_raw) in (1.1, 2.8),
+# Learnable-q parameterization: q = bounded_q(q_raw, Q_MIN, Q_MAX) in (1.1, 2.8),
 # kept strictly above 1 to avoid the softmax singularity of the entmax solver.
-Q_MIN, Q_SPAN, Q_RAW_INIT = 1.1, 1.7, -1.0
+Q_MIN, Q_MAX, Q_RAW_INIT = 1.1, 2.8, -1.0
 
 
 # --------------------------------------------------------------------------- #
@@ -89,7 +90,7 @@ def init_params(key: jax.Array) -> dict:
 
 def learned_q(params: dict):
     """The entropic index implied by the current parameters."""
-    return Q_MIN + Q_SPAN * jax.nn.sigmoid(params["q_raw"])
+    return bounded_q(params["q_raw"], Q_MIN, Q_MAX)
 
 
 def forward(params: dict, x: jnp.ndarray, q):
@@ -125,15 +126,15 @@ def train(params: dict, x, y_onehot, x_viz):
         bc1, bc2 = 1 - b1 ** (t + 1), 1 - b2 ** (t + 1)
         params = jax.tree_util.tree_map(
             lambda p, m, v: p - LR * (m / bc1) / (jnp.sqrt(v / bc2) + eps),
-            params, m, v,
+            params,
+            m,
+            v,
         )
         q = learned_q(params)
         _, attn_viz = forward(params, x_viz, q)  # attention on the fixed viz batch
         return (params, m, v), (q, attn_viz)
 
-    (params, _, _), (q_hist, attn_hist) = jax.lax.scan(
-        step, (params, m, v), jnp.arange(STEPS)
-    )
+    (params, _, _), (q_hist, attn_hist) = jax.lax.scan(step, (params, m, v), jnp.arange(STEPS))
     return params, q_hist, attn_hist
 
 

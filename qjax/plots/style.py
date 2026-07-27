@@ -14,6 +14,7 @@ from pathlib import Path
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+from cycler import cycler
 
 #: The colormap used throughout qjax figures.
 CMAP = "magma"
@@ -59,7 +60,7 @@ def use_qjax_style() -> None:
             "legend.fontsize": 9.5,
             # Color: magma colormap and a matching discrete cycle.
             "image.cmap": CMAP,
-            "axes.prop_cycle": mpl.cycler(color=qcolors(5)),
+            "axes.prop_cycle": cycler(color=qcolors(5)),
             # Figure / output: single-column default, high-resolution rasters.
             "figure.figsize": (6.0, 4.0),
             "figure.dpi": 150,

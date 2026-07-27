@@ -48,21 +48,19 @@ directly.
 
 ## Result
 
-```{figure} /_static/examples/q_gaussian.png
-:alt: q-Gaussian density family and sampled histograms
-:width: 100%
-
-Left: the `q`-Gaussian density for several values of `q` (heavier tails as `q`
-grows). Right: sampled histograms (`q = 1, 1.5, 2`) overlaid on the analytic
-density — they match.
-```
+<figure markdown>
+  ![q-Gaussian density family and sampled histograms](../img/examples/q_gaussian.png)
+  <figcaption markdown>
+  Left: the `q`-Gaussian density for several values of `q` (heavier tails as `q` grows). Right: sampled histograms (`q = 1, 1.5, 2`) overlaid on the analytic density — they match.
+  </figcaption>
+</figure>
 
 ## Takeaways
 
 A single parameter `q` interpolates continuously from compact-support through the
 Gaussian to heavy-tailed distributions, so one family spans qualitatively
-different regimes. The closed-form density {func}`~qjax.q_gaussian_pdf` and the
-sampler {func}`~qjax.sample` are mutually consistent — the empirical histograms
+different regimes. The closed-form density `qjax.q_gaussian_pdf` and the
+sampler `qjax.sample` are mutually consistent — the empirical histograms
 track the analytic curve. This same distribution underpins the
 [maximum-likelihood example](learnable_q.md), where `q` itself is recovered from
 data.

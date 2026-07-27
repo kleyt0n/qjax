@@ -1,48 +1,68 @@
 # Examples
 
 Every example in the `examples/` directory is a single, runnable script that
-trains/evaluates on synthetic data and saves a publication-grade, magma-themed
+trains/evaluates on synthetic data and saves a publication-grade, brand-themed
 figure. Run any of them with:
 
 ```bash
 uv run python examples/<name>.py
 ```
 
-```{list-table}
-:header-rows: 1
-:widths: 32 68
+<div class="site-grid" markdown>
 
-* - Example
-  - What it shows
-* - [The q-Gaussian family](examples/q_gaussian.md)
-  - Compact support (`q < 1`), Gaussian (`q = 1`) and heavy tails (`1 < q < 3`),
-    with samples overlaid on the analytic density.
-* - [Fitting q by maximum likelihood](examples/learnable_q.md)
-  - Recovers a hidden generating `q` by gradient descent on the `q`-Gaussian
-    log-likelihood — `q` is just a differentiable parameter.
-* - [Derivative-free optimization](examples/optimization.md)
-  - An animated `q`-exponential-weighted search (contour + 3-D surface) whose
-    heavy tails (`q > 1`) escape a decoy minimum that traps greedy `q = 1`.
-* - [Label-noise robustness](examples/classification.md)
-  - Bounded Tsallis cross-entropy (`q < 1`) vs. the Shannon baseline, and a
-    *learnable* `q` that discovers the robust regime on its own.
-* - [Node classification under noise](examples/node_classification.md)
-  - A GCN with *learnable* Tsallis `q` stays robust to noisy training labels,
-    while the Shannon baseline propagates the errors across the graph.
-* - [Exploration on a bandit](examples/reinforcement_learning.md)
-  - A `tsallis_entmax` policy whose *learnable* `q` anneals exploration into
-    exploitation for the lowest cumulative regret.
-* - [Sparse self-attention](examples/attention_mlp.md)
-  - Attention pooling with `tsallis_entmax`; a *learnable* `q` recovers sparse,
-    signal-focused attention as distractors grow.
-* - [Learning `q` in attention](examples/attention_q_learning.md)
-  - Animated: watch the attention `q` being learned — as `q` rises toward
-    sparsemax, the attention map sharpens onto the informative tokens.
-```
+<div class="site-card" markdown>
+### [The q-Gaussian family](examples/q_gaussian.md)
+Compact support (`q < 1`), Gaussian (`q = 1`) and heavy tails (`1 < q < 3`),
+with samples overlaid on the analytic density.
+</div>
+
+<div class="site-card" markdown>
+### [Fitting q by maximum likelihood](examples/learnable_q.md)
+Recovers a hidden generating `q` by gradient descent on the `q`-Gaussian
+log-likelihood — `q` is just a differentiable parameter.
+</div>
+
+<div class="site-card" markdown>
+### [Derivative-free optimization](examples/optimization.md)
+An animated `q`-exponential-weighted search (contour + 3-D surface) whose
+heavy tails (`q > 1`) escape a decoy minimum that traps greedy `q = 1`.
+</div>
+
+<div class="site-card" markdown>
+### [Label-noise robustness](examples/classification.md)
+Bounded Tsallis cross-entropy (`q < 1`) vs. the Shannon baseline, and a
+*learnable* `q` that discovers the robust regime on its own.
+</div>
+
+<div class="site-card" markdown>
+### [Node classification under noise](examples/node_classification.md)
+A GCN with *learnable* Tsallis `q` stays robust to noisy training labels,
+while the Shannon baseline propagates the errors across the graph.
+</div>
+
+<div class="site-card" markdown>
+### [Exploration on a bandit](examples/reinforcement_learning.md)
+A `tsallis_entmax` policy whose *learnable* `q` anneals exploration into
+exploitation for the lowest cumulative regret.
+</div>
+
+<div class="site-card" markdown>
+### [Sparse self-attention](examples/attention_mlp.md)
+Attention pooling with `tsallis_entmax`; a *learnable* `q` recovers sparse,
+signal-focused attention as distractors grow.
+</div>
+
+<div class="site-card" markdown>
+### [Learning `q` in attention](examples/attention_q_learning.md)
+Animated: watch the attention `q` being learned — as `q` rises toward
+sparsemax, the attention map sharpens onto the informative tokens.
+</div>
+
+</div>
 
 ## The recurring theme: `q` as a learnable parameter
 
-Five of the seven examples make `q` itself trainable, and the headline result is
+Six of the eight examples make `q` itself trainable, and the headline result is
 consistent: **gradient descent reliably discovers a useful entropic index**, with
 no grid search.
 
@@ -56,17 +76,3 @@ no grid search.
   converges near sparsemax (`q ≈ 2.0`), zeroing out distractor tokens.
 - [**Reinforcement learning**](examples/reinforcement_learning.md) — the learned
   policy `q` *rises* over training, annealing exploration into exploitation.
-
-```{toctree}
-:maxdepth: 1
-:hidden:
-
-examples/q_gaussian
-examples/learnable_q
-examples/optimization
-examples/classification
-examples/node_classification
-examples/reinforcement_learning
-examples/attention_mlp
-examples/attention_q_learning
-```

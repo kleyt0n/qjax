@@ -2,13 +2,13 @@
 
 Public API (see submodules for details):
 
-- Deformed functions: :func:`q_log`, :func:`q_exp`, and the ``q``-algebra
-  (:func:`q_add`, :func:`q_diff`, :func:`q_prod`, :func:`q_div`).
-- Information measures: :func:`tsallis_entropy`, :func:`tsallis_cross_entropy`,
-  :func:`tsallis_divergence`.
-- The ``q``-Gaussian distribution: :func:`q_gaussian_pdf`,
-  :func:`q_gaussian_logpdf`, :func:`sample`, :func:`normalization`.
-- The ``q``-deformed softmax/sparsemax family: :func:`tsallis_entmax`.
+- Deformed functions: `q_log`, `q_exp`, and the ``q``-algebra
+  (`q_add`, `q_diff`, `q_prod`, `q_div`).
+- Information measures: `tsallis_entropy`, `tsallis_cross_entropy`,
+  `tsallis_divergence`.
+- The ``q``-Gaussian distribution: `q_gaussian_pdf`,
+  `q_gaussian_logpdf`, `sample`, `normalization`.
+- The ``q``-deformed softmax/sparsemax family: `tsallis_entmax`.
 
 Every function is a pure, differentiable JAX expression that recovers its
 Boltzmann–Gibbs counterpart as ``q -> 1``.
@@ -31,7 +31,7 @@ from qjax.core import (
     tsallis_entropy,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",

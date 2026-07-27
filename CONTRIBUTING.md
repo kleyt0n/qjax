@@ -31,7 +31,8 @@ To work on the documentation:
 
 ```bash
 uv sync --extra docs
-uv run sphinx-build -b html docs docs/_build/html -W   # -W = warnings are errors
+uv run mkdocs serve            # live preview on http://127.0.0.1:8000
+uv run mkdocs build --strict   # what CI runs: warnings (dead links) are errors
 ```
 
 ## Project layout
@@ -43,7 +44,7 @@ qjax/
 └── plots/       # magma-themed, publication-grade plotting helpers
 examples/        # runnable scripts that save figures to examples/figures/
 tests/           # pytest suite
-docs/            # Sphinx + Furo documentation (MyST Markdown)
+docs/            # Material for MkDocs documentation (Markdown)
 ```
 
 `core/` is the single source of truth for the math; `plots/`, `examples/`, and
@@ -72,8 +73,10 @@ New primitives should follow the conventions already in `core/`:
   **100**. Run `uv run ruff check qjax tests examples` before committing; CI
   enforces it.
 - **Docstrings:** Google style (enforced by ruff's pydocstyle and rendered by
-  Sphinx/napoleon). Every public function documents its **formula**, its
-  **`q → 1` limit**, args (with shapes), and returns.
+  mkdocstrings). Every public function documents its **formula**, its
+  **`q → 1` limit**, args (with shapes), and returns. Docstring bodies are
+  **Markdown**, not reStructuredText: use `$...$` / `$$...$$` for math and
+  backticks for code — MathJax renders the former on the API reference page.
 - **Type hints:** use the aliases in `qjax.shared.types` (`Array`, `Scalar`).
 - Keep the public API curated in `qjax/__init__.py` and the relevant
   `__init__.py` re-exports.
@@ -111,7 +114,7 @@ uv run pytest
    ```bash
    uv run ruff check qjax tests examples
    uv run pytest --cov=qjax --cov-report=term-missing
-   uv run sphinx-build -b html docs docs/_build/html -W
+   uv run mkdocs build --strict
    ```
 4. Open a pull request describing the change and the maths behind it. Link any
    relevant references (the README and `docs/theory.md` cite the key papers).

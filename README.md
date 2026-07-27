@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo_qjax.svg" alt="qjax logo" width="340"/>
+<img src="https://raw.githubusercontent.com/Kleyt0n/qjax/main/assets/logo_qjax.svg" alt="qjax logo" width="340"/>
 
 #
 
@@ -141,11 +141,30 @@ As $q \to 1$ this is exactly the standard cross-entropy $-\log p_c$; for $q < 1$
 
 The figure trains a small 3-class classifier on two shapes (blobs, spiral) from clean data up to 40% label noise, comparing the Boltzmann–Gibbs–Shannon baseline ($q = 1$) with Tsallis ($q = 0.3$). The comparison is fair — both share the same initialization, data, noisy labels and optimizer; only $q$ differs. Without noise the two match (≈98–99%); as noise grows the baseline carves spurious wrong-class islands while Tsallis keeps clean regions and higher accuracy.
 
-<img src="docs/_static/examples/classification_boundaries.png" alt="Decision boundaries for blobs and spiral across noise levels: Tsallis vs the Boltzmann-Gibbs-Shannon baseline" width="960"/>
+<img src="https://raw.githubusercontent.com/Kleyt0n/qjax/main/docs/img/examples/classification_boundaries.png" alt="Decision boundaries for blobs and spiral across noise levels: Tsallis vs the Boltzmann-Gibbs-Shannon baseline" width="960"/>
 
-See the [classification example](examples/classification.py) for the full setup.
+See the [classification example](https://kleyt0n.github.io/qjax/examples/classification/) for the full setup.
 
-## Installation
+## Neural-network building blocks
+
+`qjax.nn` holds the pieces that every Tsallis model ends up needing. It is
+framework-agnostic — plain arrays and pytrees — so it composes with Flax,
+Equinox, Haiku, or hand-rolled JAX without pulling in any of them.
+
+```python
+from qjax.nn import bounded_q, entmax_attention, tsallis_cross_entropy_loss
+
+# Keep a learnable q inside its valid range, whatever the optimizer does.
+q = bounded_q(params["q_raw"], 1.0, 3.0)
+
+# Attention normalized by entmax instead of softmax.
+context, attn = entmax_attention(queries, keys, values, q=q)
+
+# A q-deformed classification loss; q < 1 bounds the penalty on bad labels.
+loss = tsallis_cross_entropy_loss(logits, targets, q=0.5, normalizer_q=1.0)
+```
+
+
 
 `qjax` requires Python 3.10+ and depends only on `jax` and `matplotlib`. It is managed with [uv](https://docs.astral.sh/uv/).
 

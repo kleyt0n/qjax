@@ -13,7 +13,7 @@ labels — and vary a single knob: the entropic index ``q`` of the
   saturates on hard/mislabeled points, so clean-set accuracy degrades far more
   gracefully as noise rises.
 - **learnable ``q``**: rather than fixing ``q`` we make it a trainable parameter
-  optimized jointly with the network (``q = q_min + span * sigmoid(.)``).
+  optimized jointly with the network (``qjax.nn.bounded_q``).
   Minimizing the bounded Tsallis loss over the training set monotonically favors
   smaller ``q`` (it down-weights unfittable, noisy points), so ``q`` *descends to
   the robust end* of its allowed range. The upshot is practical: instead of
@@ -40,6 +40,7 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 
 import qjax
+from qjax.nn import bounded_q
 from qjax.plots import CMAP, qcolors, save_figure, use_qjax_style
 
 FIG_DIR = Path(__file__).parent / "figures"
@@ -50,11 +51,11 @@ HIDDEN = 128
 STEPS = 3000
 LR = 3e-3  # Adam step size
 
-# Learnable-q parameterization: q = Q_MIN + Q_SPAN * sigmoid(q_raw) in (0.3, 1.3),
+# Learnable-q parameterization: q = bounded_q(q_raw, Q_MIN, Q_MAX) in (0.3, 1.3),
 # spanning the robust (q < 1) and standard (q = 1) regimes. We start inside the
 # robust regime (q ~ 0.5): starting near Shannon (q ~ 1) lets the network
 # memorize the noise early, before q has annealed down.
-Q_MIN, Q_SPAN, Q_RAW_INIT = 0.3, 1.0, -1.4  # init q ~ 0.50
+Q_MIN, Q_MAX, Q_RAW_INIT = 0.3, 1.3, -1.4  # init q ~ 0.50
 
 # (label, q_fixed, is_learnable) — q = 1 is the Shannon baseline; q < 1 are robust.
 METHODS = (
@@ -99,7 +100,7 @@ def init_params(key: jax.Array) -> dict:
 def resolve_q(params: dict, q_fixed, is_learnable: bool):
     """Return the loss entropic index in use: a constant, or the learned one."""
     if is_learnable:
-        return Q_MIN + Q_SPAN * jax.nn.sigmoid(params["q_raw"])
+        return bounded_q(params["q_raw"], Q_MIN, Q_MAX)
     return q_fixed
 
 
@@ -134,7 +135,9 @@ def train(params: dict, x, y_onehot, q_fixed, is_learnable: bool):
         bc1, bc2 = 1 - b1 ** (t + 1), 1 - b2 ** (t + 1)
         params = jax.tree_util.tree_map(
             lambda p, m, v: p - LR * (m / bc1) / (jnp.sqrt(v / bc2) + eps),
-            params, m, v,
+            params,
+            m,
+            v,
         )
         return (params, m, v), resolve_q(params, q_fixed, is_learnable)
 
@@ -160,9 +163,12 @@ def accuracy(params: dict, x, y) -> float:
 BND_CLASSES, BND_HIDDEN, BND_STEPS, BND_LR = 3, (64, 64), 3400, 5e-3
 BND_TEAL = "#0e8f86"  # accent framing the Tsallis (robust) columns
 BND_COLS = (
-    ("BGS", 1.0, 0.0), ("Tsallis", 0.3, 0.0),
-    ("BGS", 1.0, 0.2), ("Tsallis", 0.3, 0.2),
-    ("BGS", 1.0, 0.4), ("Tsallis", 0.3, 0.4),
+    ("BGS", 1.0, 0.0),
+    ("Tsallis", 0.3, 0.0),
+    ("BGS", 1.0, 0.2),
+    ("Tsallis", 0.3, 0.2),
+    ("BGS", 1.0, 0.4),
+    ("Tsallis", 0.3, 0.4),
 )
 
 
@@ -192,10 +198,14 @@ BND_SHAPES = (("blobs", _blobs_shape), ("spiral", _spiral_shape))
 def _bnd_init(key):
     k1, k2, k3 = jax.random.split(key, 3)
     h1, h2 = BND_HIDDEN
-    return {"w1": jax.random.normal(k1, (2, h1)) * jnp.sqrt(2.0 / 2), "b1": jnp.zeros(h1),
-            "w2": jax.random.normal(k2, (h1, h2)) * jnp.sqrt(2.0 / h1), "b2": jnp.zeros(h2),
-            "w3": jax.random.normal(k3, (h2, BND_CLASSES)) * jnp.sqrt(2.0 / h2),
-            "b3": jnp.zeros(BND_CLASSES)}
+    return {
+        "w1": jax.random.normal(k1, (2, h1)) * jnp.sqrt(2.0 / 2),
+        "b1": jnp.zeros(h1),
+        "w2": jax.random.normal(k2, (h1, h2)) * jnp.sqrt(2.0 / h1),
+        "b2": jnp.zeros(h2),
+        "w3": jax.random.normal(k3, (h2, BND_CLASSES)) * jnp.sqrt(2.0 / h2),
+        "b3": jnp.zeros(BND_CLASSES),
+    }
 
 
 def _bnd_logits(p, x):
@@ -222,7 +232,8 @@ def _bnd_train(params, x, y_oh, q):
         v = jax.tree_util.tree_map(lambda a, b: b2 * a + (1 - b2) * b * b, v, gr)
         bc1, bc2 = 1 - b1 ** (t + 1), 1 - b2 ** (t + 1)
         p = jax.tree_util.tree_map(
-            lambda p, m, v: p - BND_LR * (m / bc1) / (jnp.sqrt(v / bc2) + eps), p, m, v)
+            lambda p, m, v: p - BND_LR * (m / bc1) / (jnp.sqrt(v / bc2) + eps), p, m, v
+        )
         return (p, m, v), None
 
     (params, _, _), _ = jax.lax.scan(step, (params, m, v), jnp.arange(BND_STEPS))
@@ -245,8 +256,9 @@ def decision_boundary_figure() -> None:
     xx, yy = np.meshgrid(grid_axis, grid_axis)
     grid = jnp.asarray(np.stack([xx.ravel(), yy.ravel()], axis=-1))
 
-    fig, axes = plt.subplots(len(BND_SHAPES), len(BND_COLS), figsize=(15.6, 5.7),
-                             layout="constrained")
+    fig, axes = plt.subplots(
+        len(BND_SHAPES), len(BND_COLS), figsize=(15.6, 5.7), layout="constrained"
+    )
     base = jax.random.PRNGKey(0)
     for i, (sname, make) in enumerate(BND_SHAPES):
         ks = jax.random.split(jax.random.fold_in(base, i), 4)
@@ -255,9 +267,11 @@ def decision_boundary_figure() -> None:
         mean, std = x_tr.mean(0), x_tr.std(0)
         x_tr = (x_tr - mean) / std * 1.25
         x_te = (x_te - mean) / std * 1.25
-        params0 = _bnd_init(ks[3])                              # shared init (fairness)
-        noisy = {eta: _bnd_flip(jax.random.fold_in(ks[2], int(eta * 100)), y0, eta)
-                 for eta in {c[2] for c in BND_COLS}}           # shared noisy labels
+        params0 = _bnd_init(ks[3])  # shared init (fairness)
+        noisy = {
+            eta: _bnd_flip(jax.random.fold_in(ks[2], int(eta * 100)), y0, eta)
+            for eta in {c[2] for c in BND_COLS}
+        }  # shared noisy labels
 
         for j, (mlabel, q, eta) in enumerate(BND_COLS):
             y_tr = noisy[eta]
@@ -267,11 +281,28 @@ def decision_boundary_figure() -> None:
             print(f"{sname:<7} {mlabel:<8} eta={eta:.1f}  acc={acc:.3f}")
 
             ax = axes[i, j]
-            ax.imshow(regions, extent=[-lim, lim, -lim, lim], origin="lower", cmap=cmap,
-                      vmin=-0.5, vmax=BND_CLASSES - 0.5, alpha=0.42, interpolation="bilinear")
-            ax.scatter(np.asarray(x_tr[:, 0]), np.asarray(x_tr[:, 1]), c=np.asarray(y_tr),
-                       cmap=cmap, vmin=-0.5, vmax=BND_CLASSES - 0.5, s=24,
-                       edgecolor="white", linewidth=0.5, alpha=0.95)
+            ax.imshow(
+                regions,
+                extent=[-lim, lim, -lim, lim],
+                origin="lower",
+                cmap=cmap,
+                vmin=-0.5,
+                vmax=BND_CLASSES - 0.5,
+                alpha=0.42,
+                interpolation="bilinear",
+            )
+            ax.scatter(
+                np.asarray(x_tr[:, 0]),
+                np.asarray(x_tr[:, 1]),
+                c=np.asarray(y_tr),
+                cmap=cmap,
+                vmin=-0.5,
+                vmax=BND_CLASSES - 0.5,
+                s=24,
+                edgecolor="white",
+                linewidth=0.5,
+                alpha=0.95,
+            )
             ax.set(xlim=(-lim, lim), ylim=(-lim, lim))
             ax.set_xticks([])
             ax.set_yticks([])
@@ -282,13 +313,24 @@ def decision_boundary_figure() -> None:
                 if is_tsa:
                     sp.set_color(BND_TEAL)
                     sp.set_linewidth(2.6)
-            ax.text(0.05, 0.95, f"{acc * 100:.0f}%", transform=ax.transAxes, ha="left", va="top",
-                    fontsize=11, fontweight="bold",
-                    bbox=dict(boxstyle="round,pad=0.24", fc="white", ec="0.7", alpha=0.9))
+            ax.text(
+                0.05,
+                0.95,
+                f"{acc * 100:.0f}%",
+                transform=ax.transAxes,
+                ha="left",
+                va="top",
+                fontsize=11,
+                fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.24", fc="white", ec="0.7", alpha=0.9),
+            )
             if i == 0:
-                ax.set_title(f"{mlabel}\n$\\eta = {int(eta * 100)}\\%$", fontsize=11.5,
-                             color=BND_TEAL if is_tsa else "0.15",
-                             fontweight="bold" if is_tsa else "normal")
+                ax.set_title(
+                    f"{mlabel}\n$\\eta = {int(eta * 100)}\\%$",
+                    fontsize=11.5,
+                    color=BND_TEAL if is_tsa else "0.15",
+                    fontweight="bold" if is_tsa else "normal",
+                )
             if j == 0:
                 ax.set_ylabel(f"{sname}\n({BND_CLASSES} classes)", fontsize=12.5)
 
@@ -302,7 +344,7 @@ def main() -> None:
 
     results = {label: [] for label in labels}
     stderr = {label: [] for label in labels}
-    learned_q = []                       # final learned q, per noise level
+    learned_q = []  # final learned q, per noise level
     q_trajectories: dict[float, jnp.ndarray] = {}  # noise level -> q trajectory (seed 0)
 
     for eta in NOISE_LEVELS:

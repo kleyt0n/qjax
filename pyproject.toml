@@ -1,32 +1,75 @@
 [project]
 name = "qjax"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Tsallis statistics for artificial intelligence, built on JAX."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Kleyton Costa", email = "kleyton.costa@holisticai.com" }]
+authors = [{ name = "Kleyton da Costa", email = "kleyton.costa@holisticai.com" }]
 keywords = ["tsallis", "jax", "statistics", "entropy", "machine-learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Typing :: Typed",
+]
 dependencies = [
     "jax>=0.4.30",
-    "matplotlib>=3.8",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Kleyt0n/qjax"
+Documentation = "https://kleyt0n.github.io/qjax/"
+Repository = "https://github.com/Kleyt0n/qjax"
+Issues = "https://github.com/Kleyt0n/qjax/issues"
+Changelog = "https://github.com/Kleyt0n/qjax/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
+# Plotting is optional: importing qjax for the mathematics must not pull in
+# matplotlib. Only qjax.plots (and the examples) need it.
+plots = [
+    "matplotlib>=3.8",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "ruff>=0.6",
+    "hypothesis>=6.100",
+    "mypy>=1.11",
+    "matplotlib>=3.8",
 ]
 docs = [
-    "sphinx>=7.0",
-    "furo>=2024.1",
-    "myst-parser>=2.0",
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.26",
+    "pymdown-extensions>=10.9",
+    # mkdocstrings formats the signatures it renders separately with ruff (or
+    # black) when one is available, and warns at build time when neither is.
+    "ruff>=0.6",
+    # mkdocstrings imports the package to read its docstrings, so the optional
+    # plotting dependency has to be present for the qjax.plots pages.
+    "matplotlib>=3.8",
+]
+examples = [
+    "matplotlib>=3.8",
+    "numpy>=1.26",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+# Single source of truth: qjax.__version__.
+path = "qjax/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["qjax"]
@@ -49,3 +92,33 @@ convention = "google"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "float32: run in JAX's default single precision rather than x64",
+]
+
+[tool.coverage.run]
+source = ["qjax"]
+branch = true
+
+[tool.coverage.report]
+# The suite currently covers every statement; keep it that way.
+fail_under = 95
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.mypy]
+# Deliberately not pinning `python_version` to the 3.10 floor. Doing so makes
+# mypy parse *third-party stubs* under 3.10 too, and modern stubs are written
+# against the newest Python: numpy 2.5's use PEP 695 `type` statements, which
+# 3.10 cannot parse, so the run dies before it reaches any qjax code. Following
+# the running interpreter avoids that. 3.10 compatibility is still enforced --
+# by ruff's `target-version = "py310"` for syntax, and by the 3.10 test leg for
+# runtime.
+files = ["qjax"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true

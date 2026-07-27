@@ -8,6 +8,7 @@ indeterminate (``0 / 0``).
 
 from __future__ import annotations
 
+import jax
 import jax.numpy as jnp
 
 from qjax.shared.types import Scalar
@@ -16,19 +17,19 @@ from qjax.shared.types import Scalar
 Q_EPS: float = 1e-6
 
 
-def as_scalar_q(q: Scalar) -> jnp.ndarray:
+def as_scalar_q(q: Scalar) -> jax.Array:
     """Coerce an entropic index to a floating-point JAX scalar.
 
     Args:
         q: The entropic index, as a Python number or array-like.
 
     Returns:
-        A 0-d :class:`jax.Array` of floating dtype.
+        A 0-d `jax.Array` of floating dtype.
     """
     return jnp.asarray(q, dtype=jnp.result_type(float))
 
 
-def near_one(q: Scalar, eps: float = Q_EPS) -> jnp.ndarray:
+def near_one(q: Scalar, eps: float = Q_EPS) -> jax.Array:
     """Boolean mask for indices that should use the ``q -> 1`` (classical) limit.
 
     Args:
@@ -42,4 +43,36 @@ def near_one(q: Scalar, eps: float = Q_EPS) -> jnp.ndarray:
     return jnp.abs(as_scalar_q(q) - 1.0) < eps
 
 
-__all__ = ["Q_EPS", "as_scalar_q", "near_one"]
+def positive_q_or_nan(q: Scalar) -> jax.Array:
+    """Reject a non-positive entropic index.
+
+    The Tsallis entropy normalizer $1/(q(q-1))$ is singular at ``q = 0``,
+    so the ``entmax`` family is undefined for ``q <= 0``. A Python-level
+    ``raise`` is impossible under `jax.jit`, so the check is split: a
+    statically known ``q`` fails loudly at trace time, while a traced ``q``
+    (e.g. a learnable parameter that wandered out of range) is mapped to ``NaN``
+    so the failure is visible downstream instead of silently plausible.
+
+    Args:
+        q: The entropic index.
+
+    Returns:
+        ``q`` as a floating-point JAX scalar, or ``NaN`` where a traced ``q``
+        is non-positive.
+
+    Raises:
+        ValueError: If ``q`` is a concrete value and ``q <= 0``.
+    """
+    q = as_scalar_q(q)
+    try:
+        static = float(q)
+    except (TypeError, jax.errors.ConcretizationTypeError, jax.errors.TracerArrayConversionError):
+        return jnp.where(q > 0.0, q, jnp.nan)
+    if static <= 0.0:
+        raise ValueError(
+            f"q must be positive (Tsallis entropy is singular at q = 0); got {static}."
+        )
+    return q
+
+
+__all__ = ["Q_EPS", "as_scalar_q", "near_one", "positive_q_or_nan"]

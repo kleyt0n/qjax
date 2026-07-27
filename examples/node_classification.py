@@ -9,7 +9,7 @@ entropic index ``q`` of the ``tsallis_cross_entropy`` loss on the softmax output
   loss ``-log p_c`` is unbounded, so a confidently mislabeled node produces an
   arbitrarily large gradient and the GCN propagates that error across the graph.
 - **learnable Tsallis ``q``**: instead of fixing ``q`` we make it a trainable
-  parameter optimized jointly with the network (``q = q_min + span * sigmoid(.)``).
+  parameter optimized jointly with the network (``qjax.nn.bounded_q``).
   The bounded Tsallis loss ``-ln_q p_c = (1 - p_c^{1-q})/(1-q)`` (Zhang & Sabuncu,
   2018) has a gradient that saturates on hard/mislabeled nodes, so minimizing it
   over the noisy training set drives ``q`` *down into the robust regime* on its
@@ -36,6 +36,7 @@ from matplotlib.colors import ListedColormap
 from matplotlib.lines import Line2D
 
 import qjax
+from qjax.nn import bounded_q
 from qjax.plots import qcolors, save_figure, use_qjax_style
 
 FIG_DIR = Path(__file__).parent / "figures"
@@ -53,10 +54,10 @@ HIDDEN = 32
 STEPS = 400
 LR = 1e-2  # Adam step size
 
-# Learnable-q parameterization: q = Q_MIN + Q_SPAN * sigmoid(q_raw) in (0.3, 1.3),
+# Learnable-q parameterization: q = bounded_q(q_raw, Q_MIN, Q_MAX) in (0.3, 1.3),
 # spanning the robust (q < 1) and standard (q = 1) regimes. We start inside the
 # robust regime (q ~ 0.5) so the GCN does not memorize noise before q anneals down.
-Q_MIN, Q_SPAN, Q_RAW_INIT = 0.3, 1.0, -1.4  # init q ~ 0.50
+Q_MIN, Q_MAX, Q_RAW_INIT = 0.3, 1.3, -1.4  # init q ~ 0.50
 
 # (label, q_fixed, is_learnable) — q = 1 is the Shannon baseline.
 METHODS = (
@@ -123,7 +124,7 @@ def init_params(key: jax.Array) -> dict:
 def resolve_q(params: dict, q_fixed, is_learnable: bool):
     """Return the loss entropic index in use: a constant, or the learned one."""
     if is_learnable:
-        return Q_MIN + Q_SPAN * jax.nn.sigmoid(params["q_raw"])
+        return bounded_q(params["q_raw"], Q_MIN, Q_MAX)
     return q_fixed
 
 
@@ -159,7 +160,9 @@ def train(params: dict, x, a_hat, y_onehot, train_mask, q_fixed, is_learnable: b
         bc1, bc2 = 1 - b1 ** (t + 1), 1 - b2 ** (t + 1)
         params = jax.tree_util.tree_map(
             lambda p, m, v: p - LR * (m / bc1) / (jnp.sqrt(v / bc2) + eps),
-            params, m, v,
+            params,
+            m,
+            v,
         )
         return (params, m, v), resolve_q(params, q_fixed, is_learnable)
 
@@ -220,13 +223,29 @@ def draw_graph(ax, coords, adj_sub, pred, true, test_mask, cmap, title, acc, lim
     """
     ii, jj = np.nonzero(np.triu(adj_sub, k=1))
     segments = [(coords[a], coords[b]) for a, b in zip(ii, jj, strict=False)]
-    ax.add_collection(LineCollection(segments, colors="0.6", linewidths=0.4, alpha=0.35,
-                                     zorder=1))
+    ax.add_collection(LineCollection(segments, colors="0.6", linewidths=0.4, alpha=0.35, zorder=1))
     wrong = (pred != true) & test_mask  # misclassified held-out nodes
-    ax.scatter(coords[:, 0], coords[:, 1], c=pred, cmap=cmap, vmin=-0.5,
-               vmax=NUM_CLASSES - 0.5, s=44, edgecolor="white", linewidth=0.6, zorder=3)
-    ax.scatter(coords[wrong, 0], coords[wrong, 1], facecolors="none", edgecolors="#d62728",
-               s=132, linewidths=1.9, zorder=4)
+    ax.scatter(
+        coords[:, 0],
+        coords[:, 1],
+        c=pred,
+        cmap=cmap,
+        vmin=-0.5,
+        vmax=NUM_CLASSES - 0.5,
+        s=44,
+        edgecolor="white",
+        linewidth=0.6,
+        zorder=3,
+    )
+    ax.scatter(
+        coords[wrong, 0],
+        coords[wrong, 1],
+        facecolors="none",
+        edgecolors="#d62728",
+        s=132,
+        linewidths=1.9,
+        zorder=4,
+    )
     ax.set_title(title, pad=8)
     ax.set(xlim=lim[:2], ylim=lim[2:])
     ax.set_xticks([])
@@ -237,9 +256,17 @@ def draw_graph(ax, coords, adj_sub, pred, true, test_mask, cmap, title, acc, lim
         sp.set_visible(True)
         sp.set_color("0.8")
         sp.set_linewidth(0.8)
-    ax.text(0.035, 0.965, f"acc {acc * 100:.0f}%", transform=ax.transAxes, ha="left",
-            va="top", fontsize=11.5, fontweight="bold",
-            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="0.7", alpha=0.92))
+    ax.text(
+        0.035,
+        0.965,
+        f"acc {acc * 100:.0f}%",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=11.5,
+        fontweight="bold",
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="0.7", alpha=0.92),
+    )
 
 
 def main() -> None:
@@ -261,9 +288,7 @@ def main() -> None:
             params0 = init_params(k_init)
             for label, q_fixed, is_learnable in METHODS:
                 qf = jnp.float32(q_fixed)
-                trained, q_hist = train(
-                    params0, x, a_hat, y_onehot, train_mask, qf, is_learnable
-                )
+                trained, q_hist = train(params0, x, a_hat, y_onehot, train_mask, qf, is_learnable)
                 preds = predictions(trained, x, a_hat)
                 per_method[label].append(masked_accuracy(preds, y_clean, test_mask))
                 if is_learnable:
@@ -287,10 +312,12 @@ def main() -> None:
     fig, (ax_acc, ax_q) = plt.subplots(1, 2, figsize=(11.0, 4.5), layout="constrained")
     for label, color, marker in zip(labels, method_colors, markers, strict=False):
         mean, err = jnp.array(results[label]), jnp.array(stderr[label])
-        ax_acc.plot(NOISE_LEVELS, mean, color=color, marker=marker, markersize=6,
-                    label=label, zorder=3)
-        ax_acc.fill_between(NOISE_LEVELS, mean - err, mean + err, color=color, alpha=0.16,
-                            linewidth=0)
+        ax_acc.plot(
+            NOISE_LEVELS, mean, color=color, marker=marker, markersize=6, label=label, zorder=3
+        )
+        ax_acc.fill_between(
+            NOISE_LEVELS, mean - err, mean + err, color=color, alpha=0.16, linewidth=0
+        )
     ax_acc.set(
         xlabel=r"label-noise rate $\eta$",
         ylabel="clean test accuracy",
@@ -304,8 +331,9 @@ def main() -> None:
     for eta, color in zip(shown, qcolors(len(shown)), strict=False):
         ax_q.plot(q_trajectories[eta], color=color, label=rf"$\eta = {eta:g}$")
     ax_q.axhline(1.0, color="0.45", ls=":", lw=1.1)
-    ax_q.text(0.012 * STEPS, 1.0, "Shannon $q = 1$", color="0.4", va="bottom", ha="left",
-              fontsize=8.5)
+    ax_q.text(
+        0.012 * STEPS, 1.0, "Shannon $q = 1$", color="0.4", va="bottom", ha="left", fontsize=8.5
+    )
     ax_q.set(
         xlabel="training step",
         ylabel="learned entropic index $q$",
@@ -336,8 +364,7 @@ def main() -> None:
     lo, hi = coords.min(0) - pad, coords.max(0) + pad
     lim = (lo[0], hi[0], lo[1], hi[1])
 
-    fig, (ax_shannon, ax_tsallis) = plt.subplots(1, 2, figsize=(10.4, 5.4),
-                                                 layout="constrained")
+    fig, (ax_shannon, ax_tsallis) = plt.subplots(1, 2, figsize=(10.4, 5.4), layout="constrained")
     panels = ((ax_shannon, "(a) Shannon GNN"), (ax_tsallis, "(b) learnable-Tsallis GNN"))
     for (ax, title), (_label, q_fixed, is_learnable) in zip(panels, METHODS, strict=False):
         trained, _ = train(
@@ -345,22 +372,57 @@ def main() -> None:
         )
         preds = predictions(trained, x, a_hat)
         acc = masked_accuracy(preds, y_clean, test_mask)
-        draw_graph(ax, coords, adj_sub, np.asarray(preds)[sub_np], true_sub, test_sub,
-                   cmap, rf"{title}  ($\eta = {VIZ_ETA:g}$)", acc, lim)
+        draw_graph(
+            ax,
+            coords,
+            adj_sub,
+            np.asarray(preds)[sub_np],
+            true_sub,
+            test_sub,
+            cmap,
+            rf"{title}  ($\eta = {VIZ_ETA:g}$)",
+            acc,
+            lim,
+        )
 
     # Shared figure legend: the node colors (predicted class) and the red ring.
     class_colors = qcolors(NUM_CLASSES)
     handles = [
-        Line2D([], [], marker="o", linestyle="none", markersize=8, markerfacecolor=c,
-               markeredgecolor="white", markeredgewidth=0.6, label=f"class {i}")
+        Line2D(
+            [],
+            [],
+            marker="o",
+            linestyle="none",
+            markersize=8,
+            markerfacecolor=c,
+            markeredgecolor="white",
+            markeredgewidth=0.6,
+            label=f"class {i}",
+        )
         for i, c in enumerate(class_colors)
     ]
     handles.append(
-        Line2D([], [], marker="o", linestyle="none", markersize=10, markerfacecolor="none",
-               markeredgecolor="#d62728", markeredgewidth=1.8, label="misclassified test node")
+        Line2D(
+            [],
+            [],
+            marker="o",
+            linestyle="none",
+            markersize=10,
+            markerfacecolor="none",
+            markeredgecolor="#d62728",
+            markeredgewidth=1.8,
+            label="misclassified test node",
+        )
     )
-    fig.legend(handles=handles, loc="outside lower center", ncol=len(handles),
-               frameon=False, fontsize=9.5, columnspacing=1.5, handletextpad=0.3)
+    fig.legend(
+        handles=handles,
+        loc="outside lower center",
+        ncol=len(handles),
+        frameon=False,
+        fontsize=9.5,
+        columnspacing=1.5,
+        handletextpad=0.3,
+    )
     print(f"saved {save_figure(fig, FIG_DIR / 'node_classification_graphs')}")
 
 

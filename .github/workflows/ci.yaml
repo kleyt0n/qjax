@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_call:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -24,13 +27,39 @@ jobs:
         run: uv sync --extra dev --python 3.12
       - name: Lint with ruff
         run: uv run ruff check qjax tests examples
+      - name: Check formatting
+        # CONTRIBUTING prescribes ruff formatting; without this it was unenforced.
+        run: uv run ruff format --check qjax tests examples
+      - name: Verify the lockfile is current
+        run: uv lock --check
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --extra dev --python 3.12
+      - name: Type-check with mypy
+        run: uv run mypy
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          # Spot-check the other platforms on one interpreter rather than
+          # multiplying the whole matrix by three.
+          - os: macos-latest
+            python-version: "3.12"
+          - os: windows-latest
+            python-version: "3.12"
     steps:
       - uses: actions/checkout@v4
       - name: Set up uv
@@ -40,7 +69,61 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev --python ${{ matrix.python-version }}
       - name: Run tests
-        run: uv run pytest --cov=qjax --cov-report=term-missing
+        run: uv run pytest --cov=qjax --cov-report=term-missing --cov-report=xml
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  core-without-matplotlib:
+    # The mathematics must stay importable without the optional plots extra.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Install only the runtime dependencies
+        run: uv sync --no-dev --python 3.12
+      - name: Import and exercise the core API
+        run: |
+          uv run python -c "
+          import importlib.util, sys
+          assert importlib.util.find_spec('matplotlib') is None, 'matplotlib should not be installed'
+          import qjax, jax.numpy as jnp
+          print(qjax.q_log(2.0, 1.5), qjax.tsallis_entmax(jnp.array([1.0, 2.0]), 1.5))
+          try:
+              import qjax.plots
+          except ImportError as exc:
+              assert 'qjax[plots]' in str(exc), exc
+          else:
+              raise AssertionError('importing qjax.plots should have failed')
+          "
+
+  examples:
+    # The examples are ~1.7k lines that CI never executed. Run the fast ones.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --extra dev --extra examples --python 3.12
+      - name: Run example scripts
+        env:
+          MPLBACKEND: Agg
+        run: |
+          set -euo pipefail
+          for script in examples/q_gaussian.py examples/learnable_q.py; do
+            echo "::group::${script}"
+            uv run python "${script}"
+            echo "::endgroup::"
+          done
 
   docs:
     runs-on: ubuntu-latest
@@ -53,4 +136,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra docs --python 3.12
       - name: Build documentation (warnings as errors)
-        run: uv run sphinx-build -b html docs docs/_build/html -W --keep-going
+        # --strict promotes MkDocs warnings to errors: broken internal links,
+        # bad anchors, and pages missing from the nav all fail the build.
+        run: uv run mkdocs build --strict

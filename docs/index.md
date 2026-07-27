@@ -1,12 +1,33 @@
-# qjax
+<!-- =================================================================
+     HOME PAGE
+     The hero below is plain HTML + the `.site-*` classes defined in
+     docs/stylesheets/extra.css. Badges live in the README, where they
+     answer a stranger's first questions; here they would only compete
+     with the tagline.
+     ================================================================= -->
 
-**Tsallis statistics for artificial intelligence, built on [JAX](https://github.com/jax-ml/jax).**
+<div class="site-hero" markdown>
 
-[![PyPI](https://img.shields.io/pypi/v/qjax.svg?style=flat-square)](https://pypi.org/project/qjax/)
-[![Python](https://img.shields.io/badge/python-3.10%2B-3776ab.svg?style=flat-square)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-22863a.svg?style=flat-square)](https://github.com/Kleyt0n/qjax/blob/main/LICENSE)
-[![Built on JAX](https://img.shields.io/badge/built%20on-JAX-b73779.svg?style=flat-square)](https://github.com/jax-ml/jax)
-[![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg?style=flat-square)](https://github.com/astral-sh/ruff)
+<img class="site-hero__logo" src="logo.svg" alt="qjax logo">
+
+<!-- The wordmark above already carries the name, so the required <h1> is
+     visually hidden. It still has to exist: Material injects an `<h1>` with
+     the nav title ("Home") into any page whose content has none. -->
+<h1 class="site-hero__title site-hero__title--hidden">qjax</h1>
+
+<p class="site-hero__tagline">
+Tsallis statistics for artificial intelligence, built on
+<a href="https://github.com/jax-ml/jax">JAX</a> — <em>q</em>-deformed entropies,
+distributions and activations as pure, differentiable functions, with an
+entropic index you can learn by gradient descent.
+</p>
+
+[Get started](installation.md){ .md-button .md-button--primary }
+[View on GitHub](https://github.com/Kleyt0n/qjax){ .md-button }
+
+</div>
+
+## Why qjax
 
 Tsallis (non-extensive) statistics generalizes Boltzmann–Gibbs–Shannon
 statistics through a single *entropic index* $q$. As $q \to 1$ every construction
@@ -18,7 +39,7 @@ sparse attention, and tunable exploration.
 `jit`/`vmap`-friendly** JAX functions. Because $q$ is just another argument, you
 can hold it fixed *or* **learn it end-to-end by gradient descent**.
 
-```{code-block} python
+```python
 import jax, jax.numpy as jnp
 import qjax
 
@@ -30,7 +51,43 @@ qjax.tsallis_entmax(jnp.array([2., 1., -1.]), q=2.0)    # sparsemax (sparse soft
 jax.grad(lambda q: qjax.q_gaussian_logpdf(0.5, q, 1.0))(1.5)
 ```
 
-## Primitives and their $q \to 1$ limits
+## What is inside
+
+<div class="site-grid" markdown>
+
+<div class="site-card" markdown>
+### [Installation](installation.md)
+Install with uv or pip, the optional extras, and the GPU/TPU note.
+</div>
+
+<div class="site-card" markdown>
+### [Quickstart](quickstart.md)
+Every primitive in one runnable page, from `q_log` to a learnable `q`.
+</div>
+
+<div class="site-card" markdown>
+### [Theory](theory.md)
+The definitions `qjax` implements and their $q \to 1$ limits.
+</div>
+
+<div class="site-card" markdown>
+### [Examples](examples.md)
+Eight runnable scripts — five of them learn `q` by gradient descent.
+</div>
+
+<div class="site-card" markdown>
+### [API reference](api.md)
+Generated from source docstrings, so it always matches the installed version.
+</div>
+
+<div class="site-card" markdown>
+### [Plots](api.md#plots)
+A brand-ramp Matplotlib style and helpers that export vector PDFs.
+</div>
+
+</div>
+
+## Primitives and their q → 1 limits
 
 Every primitive is defined by a single closed form in the entropic index $q$,
 and each recovers its Boltzmann–Gibbs–Shannon counterpart in the limit
@@ -53,19 +110,17 @@ $q$-Gaussian normalization, and $\Delta$ the probability simplex. At $q = 2$,
 ## Highlights
 
 - **Differentiable in $q$.** The entropic index is finite everywhere, including
-  the $q = 1$ limit, so {func}`jax.grad` flows through it — $q$ can be *learned*.
-- **JAX-native.** Pure functions, composable with {func}`jax.jit`,
-  {func}`jax.vmap`, and {func}`jax.grad`.
+  the $q = 1$ limit, so `jax.grad` flows through it — $q$ can be *learned*.
+- **JAX-native.** Pure functions, composable with `jax.jit`, `jax.vmap`, and
+  `jax.grad`.
 - **Tested at the limit.** The suite verifies the $q \to 1$ recovery, gradients,
   and `jit`/`vmap` behaviour of every primitive.
-- **Publication-grade plots.** A `magma`-themed Matplotlib style and helpers that
+- **Publication-grade plots.** A brand-ramp Matplotlib style and helpers that
   export vector PDFs.
 
-```{admonition} Research library
-:class: note
-`qjax` is a research project. The numerics are well tested, but the API may
-still evolve between releases.
-```
+!!! note "Research library"
+    `qjax` is a research project. The numerics are well tested, but the API may
+    still evolve between releases.
 
 ## Example: label-noise robustness
 
@@ -94,34 +149,25 @@ same initialization, data, noisy labels and optimizer; only $q$ differs. Without
 noise the two match (≈98–99%); as noise grows the baseline carves spurious
 wrong-class islands while Tsallis keeps clean regions and higher accuracy.
 
-```{figure} /_static/examples/classification_boundaries.png
-:alt: decision boundaries for blobs and spiral across noise levels, BGS vs Tsallis
-:width: 100%
+<figure markdown>
+  ![Decision boundaries for blobs and spiral across noise levels, BGS vs Tsallis](img/examples/classification_boundaries.png)
+  <figcaption markdown>
+  Decision regions at 0%, 20% and 40% label noise; the **Tsallis** (robust)
+  columns are framed in teal. See the
+  [classification example](examples/classification.md) for the full setup.
+  </figcaption>
+</figure>
 
-Decision regions at 0%, 20% and 40% label noise; the **Tsallis** (robust) columns
-are framed in teal. See the [classification example](examples/classification.md)
-for the full setup.
-```
+## What's inside the package
 
-## What's inside
-
-```{list-table}
-:header-rows: 1
-:widths: 30 70
-
-* - Module
-  - Contents
-* - {mod}`qjax.core.functions`
-  - `q_log`, `q_exp`, and the $q$-algebra (`q_add`, `q_diff`, `q_prod`, `q_div`)
-* - {mod}`qjax.core.entropy`
-  - `tsallis_entropy`, `tsallis_cross_entropy`, `tsallis_divergence`
-* - {mod}`qjax.core.distributions`
-  - the $q$-Gaussian: `q_gaussian_pdf`, `q_gaussian_logpdf`, `sample`, `normalization`
-* - {mod}`qjax.core.activations`
-  - `tsallis_entmax` (the $q$-deformed softmax / sparsemax family)
-* - {mod}`qjax.plots`
-  - `magma`-themed, publication-grade plotting helpers
-```
+| Module | Contents |
+| --- | --- |
+| [`qjax.core.functions`](api.md#core-deformed-functions) | `q_log`, `q_exp`, and the $q$-algebra (`q_add`, `q_diff`, `q_prod`, `q_div`) |
+| [`qjax.core.entropy`](api.md#core-entropy-and-divergences) | `tsallis_entropy`, `tsallis_cross_entropy`, `tsallis_divergence` |
+| [`qjax.core.distributions`](api.md#core-the-q-gaussian-distribution) | the $q$-Gaussian: `q_gaussian_pdf`, `q_gaussian_logpdf`, `sample`, `normalization` |
+| [`qjax.core.activations`](api.md#core-activations-entmax) | `tsallis_entmax` (the $q$-deformed softmax / sparsemax family) |
+| [`qjax.nn`](api.md#neural-network-building-blocks) | framework-agnostic pieces: `bounded_q`, attention, losses |
+| [`qjax.plots`](api.md#plots) | brand-ramp, publication-grade plotting helpers |
 
 ## Next steps
 
@@ -129,22 +175,3 @@ for the full setup.
 - **Understand the math** — [Theory](theory.md).
 - **See it in action** — [Examples](examples.md).
 - **Look up a function** — [API reference](api.md).
-
-```{toctree}
-:maxdepth: 2
-:caption: Guide
-:hidden:
-
-installation
-quickstart
-theory
-examples
-```
-
-```{toctree}
-:maxdepth: 2
-:caption: Reference
-:hidden:
-
-api
-```

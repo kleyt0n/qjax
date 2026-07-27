@@ -9,7 +9,7 @@
 A two-layer **graph convolutional network** (GCN) is trained on a synthetic graph
 — a stochastic block model whose communities *are* the classes — while a growing
 fraction $\eta$ of the **training** labels is corrupted at random. The only knob
-is the entropic index `q` of the {func}`~qjax.tsallis_cross_entropy` loss,
+is the entropic index `q` of the `qjax.tsallis_cross_entropy` loss,
 
 $$
 H_q(y, p) = -\sum_i y_i \ln_q p_i
@@ -35,6 +35,7 @@ softmax outputs, masked to the (noisy) training nodes:
 ```python
 import jax, jax.numpy as jnp
 import qjax
+from qjax.nn import bounded_q
 
 def gcn_logits(params, x, a_hat):
     h = jax.nn.relu(a_hat @ (x @ params["w1"]))
@@ -42,7 +43,7 @@ def gcn_logits(params, x, a_hat):
 
 def loss_fn(params, x, a_hat, y_onehot, train_mask):
     # learnable q in (0.3, 1.3): spans the robust (q<1) and Shannon (q=1) regimes
-    q = 0.3 + 1.0 * jax.nn.sigmoid(params["q_raw"])
+    q = bounded_q(params["q_raw"], 0.3, 1.3)
     p = jnp.clip(jax.nn.softmax(gcn_logits(params, x, a_hat), axis=-1), 1e-7, 1.0)
     ce = qjax.tsallis_cross_entropy(p, y_onehot, q=q, axis=-1)
     w = train_mask.astype(jnp.float32)
@@ -55,29 +56,24 @@ differs.
 
 ## Result
 
-```{figure} /_static/examples/node_classification_metrics.png
-:alt: accuracy vs label noise, and the learned q trajectory
-:width: 100%
-
-(a) Clean-test accuracy vs. label-noise rate `η`: the learnable-Tsallis GNN
-degrades far more gracefully than the Shannon baseline as noise grows. (b) The
-learnable `q` descends from its initialization into the robust regime (`q < 1`)
-during training, at every noise level.
-```
+<figure markdown>
+  ![accuracy vs label noise, and the learned q trajectory](../img/examples/node_classification_metrics.png)
+  <figcaption markdown>
+  (a) Clean-test accuracy vs. label-noise rate `η`: the learnable-Tsallis GNN degrades far more gracefully than the Shannon baseline as noise grows. (b) The learnable `q` descends from its initialization into the robust regime (`q < 1`) during training, at every noise level.
+  </figcaption>
+</figure>
 
 The robustness is also *visible* on the graph itself. The **same** graph is shown
 at 40% label noise, nodes colored by each GNN's prediction and **misclassified
 test nodes ringed in red** — the Shannon GNN is peppered with errors, while the
 learnable-Tsallis GNN stays visibly cleaner.
 
-```{figure} /_static/examples/node_classification_graphs.png
-:alt: graph predictions of the Shannon vs learnable-Tsallis GNN at 40% label noise
-:width: 100%
-
-The same graph at `η = 0.4`, colored by each GNN's prediction. (a) The Shannon
-baseline scatters wrong-class nodes across the communities; (b) the
-learnable-Tsallis GNN keeps the communities clean.
-```
+<figure markdown>
+  ![graph predictions of the Shannon vs learnable-Tsallis GNN at 40% label noise](../img/examples/node_classification_graphs.png)
+  <figcaption markdown>
+  The same graph at `η = 0.4`, colored by each GNN's prediction. (a) The Shannon baseline scatters wrong-class nodes across the communities; (b) the learnable-Tsallis GNN keeps the communities clean.
+  </figcaption>
+</figure>
 
 ## Takeaways
 

@@ -17,7 +17,7 @@ the class) among many **noise** distractors. The attention map is
 ```python
 def learned_q(params):
     # q is constrained to (1.1, 2.8) so it stays in the sparse-entmax regime
-    return Q_MIN + Q_SPAN * jax.nn.sigmoid(params["q_raw"])
+    return bounded_q(params["q_raw"], Q_MIN, Q_MAX)
 
 def forward(params, x, q):
     scores = (x @ params["w_key"]) @ params["query"] / jnp.sqrt(D_MODEL)
@@ -30,17 +30,12 @@ is just another differentiable parameter.
 
 ## Result
 
-```{figure} /_static/examples/attention_q_learning.gif
-:alt: animation of q being learned while the attention map sharpens
-:width: 100%
-
-**Left:** the learned `q` over training, climbing from its initialization
-(`q ≈ 1.56`) toward sparsemax (`q = 2`). **Right:** the attention map
-(examples × positions) recomputed at each step — white outlines mark the
-ground-truth informative tokens. Early on, attention is diffuse; as `q` is
-learned the map sharpens and concentrates exactly on the outlined tokens, zeroing
-out the noise.
-```
+<figure markdown>
+  ![animation of q being learned while the attention map sharpens](../img/examples/attention_q_learning.gif)
+  <figcaption markdown>
+  **Left:** the learned `q` over training, climbing from its initialization (`q ≈ 1.56`) toward sparsemax (`q = 2`). **Right:** the attention map (examples × positions) recomputed at each step — white outlines mark the ground-truth informative tokens. Early on, attention is diffuse; as `q` is learned the map sharpens and concentrates exactly on the outlined tokens, zeroing out the noise.
+  </figcaption>
+</figure>
 
 ## Takeaways
 

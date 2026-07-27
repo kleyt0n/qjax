@@ -1,0 +1,54 @@
+name: Docs
+
+# Builds the MkDocs site and publishes it to GitHub Pages, replacing the
+# former Read the Docs build.
+#
+# One-time setup in the repository: Settings → Pages → Build and deployment →
+# Source: "GitHub Actions". No token or gh-pages branch needed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "qjax/**" # the API reference is generated from docstrings
+      - "examples/**"
+      - ".github/workflows/docs.yaml"
+  workflow_dispatch: # allow manual runs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --extra docs --python 3.12
+      - name: Build site
+        run: uv run mkdocs build --strict
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write # deploy to GitHub Pages
+      id-token: write # OIDC token used by deploy-pages
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
