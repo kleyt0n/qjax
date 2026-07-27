@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - Unreleased
+## [0.1.2] - 2026-07-27
 
 This release corrects a gradient bug in `tsallis_entmax` that affected every
 model trained through it. Primal outputs for `q > 1` are unchanged to within
