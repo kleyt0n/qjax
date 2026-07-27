@@ -21,17 +21,18 @@ a fixed hyperparameter.
 
 ## How it works
 
-The only `qjax` call is {func}`~qjax.q_gaussian_logpdf`. The parameters are
+The only `qjax` call is `qjax.q_gaussian_logpdf`. The parameters are
 optimized in an unconstrained space and mapped into valid ranges (`beta > 0`,
 `q ∈ (1, 3)`) so the gradients stay well-defined:
 
 ```python
 import jax, jax.numpy as jnp
 import qjax
+from qjax.nn import bounded_q
 
 def neg_log_likelihood(params, x):
     beta = jax.nn.softplus(params["beta_raw"]) + 1e-3      # beta > 0
-    q = 1.0 + 2.0 * jax.nn.sigmoid(params["q_raw"])        # q in (1, 3)
+    q = bounded_q(params["q_raw"], 1.0, 3.0)               # q in (1, 3)
     return -jnp.mean(qjax.q_gaussian_logpdf(x, q, beta))
 
 loss_and_grad = jax.jit(jax.value_and_grad(neg_log_likelihood))
@@ -44,17 +45,16 @@ for _ in range(400):
 
 ## Result
 
-```{figure} /_static/examples/learnable_q.png
-:alt: optimization loss curve and recovered q approaching the true value
-:width: 100%
-
-Left: the negative log-likelihood decreasing during optimization. Right: the
-estimate `q̂` converging to the true generating `q = 1.6` (dashed line).
-```
+<figure markdown>
+  ![optimization loss curve and recovered q approaching the true value](../img/examples/learnable_q.png)
+  <figcaption markdown>
+  Left: the negative log-likelihood decreasing during optimization. Right: the estimate `q̂` converging to the true generating `q = 1.6` (dashed line).
+  </figcaption>
+</figure>
 
 ## Takeaways
 
-Since {func}`~qjax.q_gaussian_logpdf` is differentiable in `q`, maximum-likelihood
+Since `qjax.q_gaussian_logpdf` is differentiable in `q`, maximum-likelihood
 estimation of the entropic index is just gradient descent — and the hidden `q` is
 recovered accurately, validating `q`-as-a-parameter. The same idea scales to full
 models in the [classification](classification.md),

@@ -1,0 +1,177 @@
+# ==================================================================== #
+# qjax — Material for MkDocs                                           #
+#                                                                      #
+# Ported from the Docsforge template (docs/stylesheets/extra.css owns   #
+# the visual identity). The Rust/rustdoc pieces of the template are     #
+# dropped; the mkdocstrings block points at the top-level `qjax/`       #
+# package rather than a `src/` layout.                                  #
+# ==================================================================== #
+
+site_name: qjax
+site_description: >-
+  Tsallis statistics for artificial intelligence, built on JAX —
+  q-deformed entropies, distributions and activations as pure,
+  differentiable JAX functions with a learnable entropic index.
+site_author: Kleyton da Costa
+site_url: https://kleyt0n.github.io/qjax/
+repo_name: Kleyt0n/qjax
+repo_url: https://github.com/Kleyt0n/qjax
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; Kleyton da Costa — MIT License
+
+docs_dir: docs
+
+theme:
+  name: material
+  # The square `q` mark, not the full wordmark: the header renders its logo in
+  # a 1.9rem box, which would squash the 1.7:1 wordmark. The wordmark is used
+  # on the home page hero instead (docs/logo.svg).
+  logo: mark.svg
+  favicon: mark.svg
+  icon:
+    repo: fontawesome/brands/github
+  font:
+    text: Google Sans Flex
+    code: Google Sans Code
+  # `custom` suppresses Material's built-in color rules, so the ramp in
+  # docs/stylesheets/extra.css owns every color on the site.
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.action.edit
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Kleyt0n/qjax
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/qjax/
+  # Drop the "Made with Material for MkDocs" line. Set to `true` to keep it.
+  generator: false
+
+# Turn silent link rot into build failures under `mkdocs build --strict`.
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      title: On this page
+  # `generic: true` renders $...$ / $$...$$ through MathJax, so the dollar-math
+  # in the pages carried over from MyST keeps working unchanged.
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  # `base_path` lets docs pages pull in repo-root files (the example scripts)
+  # with the `--8<--` include syntax, so they never drift out of sync.
+  - pymdownx.snippets:
+      base_path: [., docs]
+      check_paths: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search
+  # Renders the API reference straight from the source docstrings, so it can
+  # never disagree with the code.
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [.]
+          # Lets `[jax.grad][]`-style references resolve against the upstream
+          # inventories instead of hard-coding URLs.
+          inventories:
+            - https://docs.python.org/3/objects.inv
+            - https://numpy.org/doc/stable/objects.inv
+            - https://docs.jax.dev/en/latest/objects.inv
+            - https://matplotlib.org/stable/objects.inv
+          options:
+            # qjax docstrings are Google-style (see ruff's pydocstyle config).
+            docstring_style: google
+            show_root_heading: true
+            show_root_full_path: false
+            show_source: true
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            filters: ["!^_"]
+            docstring_section_style: table
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: installation.md
+      - Quickstart: quickstart.md
+      - Theory: theory.md
+  - Examples:
+      - Overview: examples.md
+      - The q-Gaussian family: examples/q_gaussian.md
+      - Fitting q by maximum likelihood: examples/learnable_q.md
+      - Derivative-free optimization: examples/optimization.md
+      - Label-noise robustness: examples/classification.md
+      - Node classification under noise: examples/node_classification.md
+      - Exploration on a bandit: examples/reinforcement_learning.md
+      - Sparse self-attention: examples/attention_mlp.md
+      - Learning q in attention: examples/attention_q_learning.md
+  - API reference: api.md

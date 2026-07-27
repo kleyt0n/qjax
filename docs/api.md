@@ -1,52 +1,63 @@
 # API reference
 
 The curated public API is re-exported at the top level (e.g. `qjax.q_log`); the
-canonical definitions live in the submodules documented below.
+canonical definitions live in the submodules documented below. Every entry on
+this page is rendered from the source docstrings by
+[mkdocstrings](https://mkdocstrings.github.io/), so it cannot disagree with the
+installed version.
+
+!!! note "How to read these pages"
+    Signatures show the annotations from the source. Arguments, returns, and
+    raises come from the Google-style docstring sections — the same text `help()`
+    prints in a REPL. Click **Source** on any entry to see the implementation.
 
 ## Core — deformed functions
 
-```{eval-rst}
-.. automodule:: qjax.core.functions
-   :members:
-```
+::: qjax.core.functions
+    options:
+      heading_level: 3
 
 ## Core — entropy and divergences
 
-```{eval-rst}
-.. automodule:: qjax.core.entropy
-   :members:
-```
+::: qjax.core.entropy
+    options:
+      heading_level: 3
 
 ## Core — the q-Gaussian distribution
 
-```{eval-rst}
-.. automodule:: qjax.core.distributions
-   :members:
-```
+::: qjax.core.distributions
+    options:
+      heading_level: 3
 
 ## Core — activations (entmax)
 
-```{eval-rst}
-.. automodule:: qjax.core.activations
-   :members:
-```
+::: qjax.core.activations
+    options:
+      heading_level: 3
 
 ## Shared — types and validation
 
-```{eval-rst}
-.. automodule:: qjax.shared.validation
-   :members:
-```
+::: qjax.shared.types
+    options:
+      heading_level: 3
+
+::: qjax.shared.validation
+    options:
+      heading_level: 3
+
 
 ## Plots
 
-```{eval-rst}
-.. automodule:: qjax.plots.style
-   :members:
+Plotting requires the optional `plots` extra: `pip install "qjax[plots]"`.
 
-.. automodule:: qjax.plots.functions
-   :members:
+::: qjax.plots.style
+    options:
+      heading_level: 3
 
-.. automodule:: qjax.plots.distributions
-   :members:
-```
+::: qjax.plots.functions
+    options:
+      heading_level: 3
+
+::: qjax.plots.distributions
+    options:
+      heading_level: 3

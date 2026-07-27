@@ -7,7 +7,7 @@
 
 The same over-parameterized MLP is trained on a 4-class problem while a growing
 fraction $\eta$ of the training labels is corrupted at random. The only knob is
-the entropic index `q` of the {func}`~qjax.tsallis_cross_entropy` loss, which
+the entropic index `q` of the `qjax.tsallis_cross_entropy` loss, which
 replaces the logarithm of ordinary cross-entropy with the deformed `q`-logarithm,
 
 $$
@@ -35,10 +35,11 @@ learnable is just mapping a free parameter into the desired range:
 ```python
 import jax, jax.numpy as jnp
 import qjax
+from qjax.nn import bounded_q
 
 def loss_fn(params, x, y_onehot):
     # learnable q in (0.3, 1.3): spans the robust (q<1) and Shannon (q=1) regimes
-    q = 0.3 + 1.0 * jax.nn.sigmoid(params["q_raw"])
+    q = bounded_q(params["q_raw"], 0.3, 1.3)
     p = jnp.clip(jax.nn.softmax(logits(params, x), axis=-1), 1e-7, 1.0)
     return jnp.mean(qjax.tsallis_cross_entropy(p, y_onehot, q=q, axis=-1))
 ```
@@ -47,15 +48,12 @@ Set a fixed `q < 1` instead of the learnable one to get the bounded baselines.
 
 ## Result
 
-```{figure} /_static/examples/classification.png
-:alt: accuracy vs label noise, the q learning trajectory, and the task
-:width: 100%
-
-(a) Clean-test accuracy vs. label-noise rate `η`: bounded losses (`q < 1`) and
-the learnable `q` stay far above the Shannon baseline as noise grows. (b) The
-learnable `q` descends from its initialization into the robust regime during
-training. (c) The synthetic task: four overlapping Gaussian classes.
-```
+<figure markdown>
+  ![accuracy vs label noise, the q learning trajectory, and the task](../img/examples/classification.png)
+  <figcaption markdown>
+  (a) Clean-test accuracy vs. label-noise rate `η`: bounded losses (`q < 1`) and the learnable `q` stay far above the Shannon baseline as noise grows. (b) The learnable `q` descends from its initialization into the robust regime during training. (c) The synthetic task: four overlapping Gaussian classes.
+  </figcaption>
+</figure>
 
 ## Decision boundaries across shapes
 
@@ -66,15 +64,12 @@ with the bounded Tsallis loss (`q = 0.3`). The comparison is **fair**: within ea
 shape both losses share the same initialization, data, noisy labels and optimizer
 — only `q` differs.
 
-```{figure} /_static/examples/classification_boundaries.png
-:alt: decision boundaries for blobs and spiral across noise levels, BGS vs Tsallis
-:width: 100%
-
-Decision regions at 0%, 20% and 40% label noise. The **Tsallis** (robust) columns
-are framed in teal. Without noise both losses match (≈98–99%); as noise grows the
-**BGS** baseline memorizes the mislabeled points and carves spurious wrong-class
-islands, while **Tsallis** keeps clean regions and higher clean-test accuracy.
-```
+<figure markdown>
+  ![decision boundaries for blobs and spiral across noise levels, BGS vs Tsallis](../img/examples/classification_boundaries.png)
+  <figcaption markdown>
+  Decision regions at 0%, 20% and 40% label noise. The **Tsallis** (robust) columns are framed in teal. Without noise both losses match (≈98–99%); as noise grows the **BGS** baseline memorizes the mislabeled points and carves spurious wrong-class islands, while **Tsallis** keeps clean regions and higher clean-test accuracy.
+  </figcaption>
+</figure>
 
 At 0% noise the two losses are indistinguishable (blobs 98% vs 98%, spiral 99% vs
 99%) — confirming the baseline is not handicapped. The gap opens only once noise

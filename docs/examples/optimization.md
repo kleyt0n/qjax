@@ -48,19 +48,16 @@ sigma = jnp.sqrt(jnp.sum(weights[:, None] * (samples - mu) ** 2, axis=0)) + 1e-3
 
 ## Result
 
-```{figure} /_static/examples/optimization.png
-:alt: 2-D deceptive cost landscape with q=1 and q=2.5 search paths
-:width: 100%
-
-Left: the cost landscape with the live population and each method's mean path (the
-global minimum marked ★, the decoy ✗). Right: the same surface in 3-D with the
-paths traced on it. Greedy `q = 1` (BGS) settles in the decoy well, while
-heavy-tailed `q = 2.5` (Tsallis) escapes and reaches the global optimum.
-```
+<figure markdown>
+  ![2-D deceptive cost landscape with q=1 and q=2.5 search paths](../img/examples/optimization.png)
+  <figcaption markdown>
+  Left: the cost landscape with the live population and each method's mean path (the global minimum marked ★, the decoy ✗). Right: the same surface in 3-D with the paths traced on it. Greedy `q = 1` (BGS) settles in the decoy well, while heavy-tailed `q = 2.5` (Tsallis) escapes and reaches the global optimum.
+  </figcaption>
+</figure>
 
 ## Takeaways
 
-Swapping `exp` for {func}`~qjax.q_exp` turns the temperature into a *tail-weight*
+Swapping `exp` for `qjax.q_exp` turns the temperature into a *tail-weight*
 knob: heavier tails ($q > 1$) trade a little greediness for robustness to
 deceptive local minima, at no extra cost to the algorithm. The same
 `q`-exponential is the building block of the [`q`-Gaussian](q_gaussian.md) density

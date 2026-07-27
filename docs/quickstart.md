@@ -1,7 +1,7 @@
 # Quickstart
 
 Every `qjax` primitive is a pure function of `(x, q)` that is compatible with
-{func}`jax.jit`, {func}`jax.grad`, and {func}`jax.vmap`, and recovers its
+`jax.jit`, `jax.grad`, and `jax.vmap`, and recovers its
 Boltzmann–Gibbs counterpart as `q → 1`.
 
 ## Deformed functions

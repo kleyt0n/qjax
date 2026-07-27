@@ -35,12 +35,13 @@ respect to both the preferences and `q`:
 ```python
 import jax, jax.numpy as jnp
 import qjax
+from qjax.nn import bounded_q
 
 probs = qjax.tsallis_entmax(prefs, q=q, num_iters=30)
 arm = jax.random.choice(key, K_ARMS, p=probs)
 
 def log_prob(prefs, q_raw):
-    qq = resolve_q(q_raw, q_fixed, is_learnable)     # q = q_min + span*sigmoid(.)
+    qq = resolve_q(q_raw, q_fixed, is_learnable)     # bounded_q(q_raw, Q_MIN, Q_MAX)
     pr = jnp.clip(qjax.tsallis_entmax(prefs, q=qq, num_iters=30), 1e-9, 1.0)
     return jnp.log(pr[arm])
 
@@ -50,19 +51,16 @@ g_prefs, g_qraw = jax.grad(log_prob, argnums=(0, 1))(prefs, q_raw)
 
 ## Result
 
-```{figure} /_static/examples/reinforcement_learning.png
-:alt: average reward, cumulative regret, optimal-action rate, and learned q
-:width: 100%
-
-(a) Average reward, (b) cumulative regret, (c) %-optimal-action, and (d) the
-policy's learned `q` over training. The learnable policy starts near full
-exploration and *raises* `q` as the best arm emerges, achieving the lowest
-cumulative regret while matching softmax's optimal-action rate.
-```
+<figure markdown>
+  ![average reward, cumulative regret, optimal-action rate, and learned q](../img/examples/reinforcement_learning.png)
+  <figcaption markdown>
+  (a) Average reward, (b) cumulative regret, (c) %-optimal-action, and (d) the policy's learned `q` over training. The learnable policy starts near full exploration and *raises* `q` as the best arm emerges, achieving the lowest cumulative regret while matching softmax's optimal-action rate.
+  </figcaption>
+</figure>
 
 ## Takeaways
 
-{func}`~qjax.tsallis_entmax` provides a one-parameter family of policies spanning
+`qjax.tsallis_entmax` provides a one-parameter family of policies spanning
 dense (softmax) to sparse (sparsemax) exploration. A fixed sparse policy commits
 too early, whereas a learnable `q` **anneals** exploration into exploitation and
 achieves the lowest cumulative regret. Because `tsallis_entmax` is differentiable

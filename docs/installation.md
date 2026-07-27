@@ -16,11 +16,10 @@ or install it with pip:
 pip install qjax
 ```
 
-```{tip}
-For GPU/TPU acceleration, install the matching JAX build first by following the
-[JAX installation guide](https://docs.jax.dev/en/latest/installation.html);
-`qjax` then runs on whatever JAX backend is available.
-```
+!!! tip
+    For GPU/TPU acceleration, install the matching JAX build first by following the
+    [JAX installation guide](https://docs.jax.dev/en/latest/installation.html);
+    `qjax` then runs on whatever JAX backend is available.
 
 ## Contributing (from a clone)
 
@@ -42,23 +41,19 @@ uv run ruff check      # lint
 
 ### Optional dependency groups
 
-```{list-table}
-:header-rows: 1
-:widths: 20 80
-
-* - Group
-  - Installs
-* - `dev`
-  - `pytest`, `ruff` — run the test suite and linter
-* - `docs`
-  - `sphinx`, `furo`, `myst-parser` — build this documentation
-```
+| Group | Installs |
+| --- | --- |
+| `dev` | `pytest`, `pytest-cov`, `ruff`, `mypy`, `hypothesis`, `matplotlib` — the full check suite |
+| `plots` | `matplotlib` — everything under `qjax.plots` |
+| `examples` | `matplotlib`, `numpy` — run the scripts in `examples/` |
+| `docs` | `mkdocs-material`, `mkdocstrings` — build this documentation |
 
 Build the documentation locally:
 
 ```bash
 uv sync --extra docs
-uv run sphinx-build -b html docs docs/_build/html   # or: cd docs && make html
+uv run mkdocs serve     # live preview on http://127.0.0.1:8000
+uv run mkdocs build --strict   # what CI runs: broken links fail the build
 ```
 
-Then open `docs/_build/html/index.html`.
+`mkdocs build` writes the static site to `site/`.

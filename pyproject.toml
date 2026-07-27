@@ -19,9 +19,16 @@ dev = [
     "ruff>=0.6",
 ]
 docs = [
-    "sphinx>=7.0",
-    "furo>=2024.1",
-    "myst-parser>=2.0",
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.26",
+    "pymdown-extensions>=10.9",
+    # mkdocstrings formats the signatures it renders separately with ruff (or
+    # black) when one is available, and warns at build time when neither is.
+    "ruff>=0.6",
+    # mkdocstrings imports the package to read its docstrings, so the optional
+    # plotting dependency has to be present for the qjax.plots pages.
+    "matplotlib>=3.8",
 ]
 
 [build-system]
