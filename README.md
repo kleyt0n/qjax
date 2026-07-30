@@ -19,7 +19,9 @@
 
 ## What is qjax?
 
-Tsallis (non-extensive) statistics generalizes Boltzmann–Gibbs–Shannon statistics through a single *entropic index* $q$. As $q \to 1$ every construction collapses back to its classical counterpart — Shannon entropy, the Gaussian, softmax, the Kullback–Leibler divergence — while $q \neq 1$ opens up heavy tails, sparse attention, and tunable exploration.
+Most machine learning tools quietly assume a single shape for randomness and uncertainty: the bell curve, softmax attention, Shannon entropy. These are baked in as fixed rules, and real data often doesn't follow them. Labels are noisy, outcomes have heavy tails, and attention sometimes needs to focus sharply on a few inputs instead of spreading weight over everything. qjax replaces that fixed rule with a single tunable parameter, q, so these familiar tools can stretch to fit the data instead of forcing the data to fit them. Because q is fully differentiable, a model can learn the right setting during training instead of you having to guess it. In practice this means classifiers that resist memorizing mislabeled data, distributions that capture heavy tails a standard Gaussian would miss, and attention that can be as sparse or as dense as the problem needs, all as drop-in JAX functions compatible with `jit`, `vmap`, and the training code you already have.
+
+Tsallis (non-extensive) statistics generalizes Boltzmann–Gibbs–Shannon statistics through a single *entropic index* $q$. As $q \to 1$ every construction collapses back to its classical counterpart (Shannon entropy, the Gaussian, softmax, the Kullback–Leibler divergence), while $q \neq 1$ opens up heavy tails, sparse attention, and tunable exploration.
 
 `qjax` exposes these $q$-deformed primitives as pure, differentiable, `jit`/`vmap`-friendly JAX functions. Because $q$ is just another argument, you can hold it fixed *or* learn it end-to-end by gradient descent.
 
@@ -120,7 +122,7 @@ qjax.tsallis_entmax(z, q=2.0)   # sparsemax (exact zeros)
 
 ## A learnable $q$
 
-Because $q$ is an ordinary differentiable argument, it is finite everywhere — including the $q = 1$ limit — so it can be optimized like any other parameter:
+Because $q$ is an ordinary differentiable argument, it is finite everywhere, including the $q = 1$ limit, so it can be optimized like any other parameter:
 
 ```python
 import jax
@@ -134,7 +136,7 @@ This is what makes $q$ more than a hyperparameter: the right amount of non-exten
 
 ## Label-noise robustness
 
-When training labels are noisy, ordinary softmax **cross-entropy** is unbounded — a confidently mislabeled example incurs an arbitrarily large loss, so an over-parameterized network ends up *memorizing* the noise. Replacing the logarithm with the deformed $q$-logarithm gives the **Tsallis cross-entropy**, which is *bounded* for $q < 1$: its gradient saturates on unfittable points, so the model ignores label noise instead of fitting it.
+When training labels are noisy, ordinary softmax **cross-entropy** is unbounded: a confidently mislabeled example incurs an arbitrarily large loss, so an over-parameterized network ends up *memorizing* the noise. Replacing the logarithm with the deformed $q$-logarithm gives the **Tsallis cross-entropy**, which is *bounded* for $q < 1$: its gradient saturates on unfittable points, so the model ignores label noise instead of fitting it.
 
 For a one-hot target with true class $c$ and softmax probabilities $p$,
 
@@ -142,7 +144,7 @@ $$\mathcal{L}_q(p, c) = -\ln_q p_c = \frac{1 - p_c^{\,1-q}}{1 - q}, \qquad \ln_q
 
 As $q \to 1$ this is exactly the standard cross-entropy $-\log p_c$; for $q < 1$ the per-example loss is bounded above by $1/(1-q)$, so mislabeled points cannot dominate the gradient.
 
-The figure trains a small 3-class classifier on two shapes (blobs, spiral) from clean data up to 40% label noise, comparing the Boltzmann–Gibbs–Shannon baseline ($q = 1$) with Tsallis ($q = 0.3$). The comparison is fair — both share the same initialization, data, noisy labels and optimizer; only $q$ differs. Without noise the two match (≈98–99%); as noise grows the baseline carves spurious wrong-class islands while Tsallis keeps clean regions and higher accuracy.
+The figure trains a small 3-class classifier on two shapes (blobs, spiral) from clean data up to 40% label noise, comparing the Boltzmann–Gibbs–Shannon baseline ($q = 1$) with Tsallis ($q = 0.3$). The comparison is fair: both share the same initialization, data, noisy labels and optimizer, and only $q$ differs. Without noise the two match (≈98–99%); as noise grows the baseline carves spurious wrong-class islands while Tsallis keeps clean regions and higher accuracy.
 
 <img src="https://raw.githubusercontent.com/Kleyt0n/qjax/main/docs/img/examples/classification_boundaries.png" alt="Decision boundaries for blobs and spiral across noise levels: Tsallis vs the Boltzmann-Gibbs-Shannon baseline" width="960"/>
 
@@ -151,7 +153,7 @@ See the [classification example](https://kleyt0n.github.io/qjax/examples/classif
 ## Neural-network building blocks
 
 `qjax.nn` holds the pieces that every Tsallis model ends up needing. It is
-framework-agnostic — plain arrays and pytrees — so it composes with Flax,
+framework-agnostic, using plain arrays and pytrees, so it composes with Flax,
 Equinox, Haiku, or hand-rolled JAX without pulling in any of them.
 
 ```python
@@ -182,7 +184,7 @@ For GPU/TPU acceleration, install the matching JAX build by following the [JAX i
 
 ## Contributing
 
-Contributions are welcome — new $q$-deformed primitives, examples, docs, and fixes. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, design principles (purity, the $q \to 1$ limit, finite gradients), and the checks CI runs.
+Contributions are welcome: new $q$-deformed primitives, examples, docs, and fixes. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, design principles (purity, the $q \to 1$ limit, finite gradients), and the checks CI runs.
 
 ## License
 
