@@ -186,6 +186,21 @@ For GPU/TPU acceleration, install the matching JAX build by following the [JAX i
 
 Contributions are welcome: new $q$-deformed primitives, examples, docs, and fixes. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, design principles (purity, the $q \to 1$ limit, finite gradients), and the checks CI runs.
 
+
+## Cite this work
+
+```bibtex
+@misc{dacosta2026tsallis,
+      title={Perspectives on Tsallis Statistics for Artificial Intelligence}, 
+      author={Kleyton da Costa and Bernardo Modenesi},
+      year={2026},
+      eprint={2608.01223},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2608.01223}, 
+}
+```
+
 ## License
 
 Released under the [MIT License](LICENSE).
