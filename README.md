@@ -6,6 +6,7 @@
 
 **Tsallis statistics for artificial intelligence, built on [JAX](https://github.com/jax-ml/jax).**
 
+[![arXiv](https://img.shields.io/badge/arXiv-paper-b31b1b.svg?style=flat-square)](https://arxiv.org/abs/2608.01223)
 [![PyPI](https://img.shields.io/pypi/v/qjax.svg?style=flat-square&color=1a759f)](https://pypi.org/project/qjax/)
 [![Docs](https://img.shields.io/badge/docs-kleyt0n.github.io%2Fqjax-1a759f.svg?style=flat-square)](https://kleyt0n.github.io/qjax/)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776ab.svg?style=flat-square)](https://www.python.org/)
