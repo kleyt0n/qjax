@@ -135,7 +135,10 @@ here stay below $5/3$ so that the error bars mean what they say.
   ordinary Gaussian noise produces an exact $q$-Gaussian.
 - The compact support of the $q<1$ $q$-Gaussian is a real obstacle to
   likelihood-based inference, and the scaling relation is the way around it.
-  It is not an obstacle to a *PDE residual*, which is well defined there.
+  It is not an obstacle to a *PDE residual*, which is well defined there — see
+  [the PINN](pinn_fokker_planck.md), which solves this same equation from the
+  other side — and where a second, unrelated entropic index turns up in the
+  distribution of those residuals.
 
 ## References
 

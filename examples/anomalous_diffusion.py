@@ -56,6 +56,10 @@ never cross into ``q < 1``. The maximum-likelihood arms are therefore bounded to
 relation ``q = 3 - 2/alpha`` instead. That is a real constraint of compact-support
 likelihoods, not a limitation of this script.
 
+``examples/pinn_fokker_planck.py`` attacks the same equation from the opposite
+direction -- solving it by a PDE residual rather than sampling it -- and finds a
+second, unrelated entropic index in the distribution of those residuals.
+
 Run with: ``uv run python examples/anomalous_diffusion.py``
 Add ``--full`` (or set ``QJAX_FULL=1``) for the larger configuration.
 """

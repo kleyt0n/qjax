@@ -171,6 +171,7 @@ nav:
           - Variational free energy at index q: examples/tsallis_free_energy.md
           - Generalized simulated annealing: examples/generalized_annealing.md
           - Anomalous diffusion: examples/anomalous_diffusion.md
+          - Heavy-tailed PINN residuals: examples/pinn_fokker_planck.md
       - Machine learning:
           - The q-Gaussian family: examples/q_gaussian.md
           - Fitting q by maximum likelihood: examples/learnable_q.md
