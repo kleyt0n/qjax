@@ -65,7 +65,8 @@ exactly known target, and Lutz's cold-atom law.
 <div class="site-card" markdown>
 ### [Heavy-tailed PINN residuals](examples/pinn_fokker_planck.md)
 An ICML 2026 Student-t residual model *is* a `q`-Gaussian likelihood. The
-residuals are heavier than Cauchy — and the robust loss still backfires.
+residuals are heavier than Cauchy; the robust loss helps where the solution is
+smooth and is 15× worse at a free boundary.
 </div>
 
 </div>
@@ -158,8 +159,8 @@ the density and by the mean-squared-displacement exponent, tied together by
 
 In [**the PINN**](examples/pinn_fokker_planck.md) two indices appear at once: the
 equation's, fixed by the physics, and the *residual model's*, learned. The second
-turns a state-of-the-art Student-t construction into a `qjax` one-liner — and then
-shows that a robust residual loss and a forward PDE are a bad match.
+turns a state-of-the-art Student-t construction into a `qjax` one-liner, which
+earns its keep where the solution is smooth and inverts at a free boundary.
 
 ### `q` as a control parameter
 

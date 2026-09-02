@@ -93,10 +93,17 @@ def lj_energy_confined(
         sigma: Length scale.
 
     Returns:
-        Confined energy per cluster, shape ``(...)``.
+        Confined energy per cluster, shape ``(...)``. Differentiable everywhere,
+        including at the origin.
     """
     positions = jnp.asarray(positions, dtype=jnp.result_type(float))
-    radius = jnp.sqrt(jnp.sum(positions**2, axis=-1))
+    # ``sqrt`` has an infinite derivative at zero, and the ``maximum`` below then
+    # multiplies it by zero -- so an atom sitting exactly at the origin (the
+    # centre of a re-centred icosahedron, say) would give a finite energy and a
+    # NaN gradient. Sanitize the radicand before the root, as ``lj_energy`` does.
+    squared_radius = jnp.sum(positions**2, axis=-1)
+    inside = squared_radius > 0.0
+    radius = jnp.where(inside, jnp.sqrt(jnp.where(inside, squared_radius, 1.0)), 0.0)
     excess = jnp.maximum(radius - jnp.asarray(container_radius, dtype=radius.dtype), 0.0)
     wall = jnp.asarray(stiffness, dtype=radius.dtype) * jnp.sum(excess**2, axis=-1)
     return lj_energy(positions, epsilon, sigma) + wall

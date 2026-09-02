@@ -70,6 +70,8 @@ from qjax.physics.lattice import (
     onsager_free_energy_per_site,
     onsager_magnetization,
     sample_ising,
+    wolff_chain,
+    wolff_update,
 )
 from qjax.physics.observables import (
     binder_cumulant,
@@ -119,6 +121,8 @@ __all__ = [
     "ising_magnetization",
     "checkerboard_sweep",
     "metropolis_chain",
+    "wolff_update",
+    "wolff_chain",
     "sample_ising",
     "ising_all_configurations",
     "ising_boltzmann_probabilities",

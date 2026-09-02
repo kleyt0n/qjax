@@ -119,3 +119,20 @@ def test_coordination_numbers():
     assert jnp.all(C.coordination_numbers(positions, cutoff=1.0) == 0)
     # Batched.
     assert C.coordination_numbers(jnp.stack([positions, positions])).shape == (2, 4)
+
+
+def test_confined_energy_is_differentiable_at_the_origin():
+    # The soft wall goes through sqrt(sum x^2), whose derivative is infinite at
+    # zero; the ``maximum`` outside it then multiplies that by zero. Without
+    # sanitizing the radicand first, an atom at the origin -- the centre of a
+    # re-centred icosahedron -- gives a finite energy and a NaN gradient.
+    positions = jnp.array([[0.0, 0.0, 0.0], [1.12, 0.0, 0.0], [0.0, 1.12, 0.0]])
+    assert bool(jnp.isfinite(C.lj_energy_confined(positions, 5.0)))
+    gradient = jax.grad(lambda x: C.lj_energy_confined(x, 5.0))(positions)
+    assert bool(jnp.all(jnp.isfinite(gradient)))
+    # Strictly inside the container the wall contributes nothing at all.
+    assert float(C.lj_energy_confined(positions, 5.0)) == pytest.approx(
+        float(C.lj_energy(positions))
+    )
+    bare = jax.grad(C.lj_energy)(positions)
+    assert jnp.allclose(gradient, bare)

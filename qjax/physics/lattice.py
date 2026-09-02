@@ -6,6 +6,10 @@ sampled quantity has at least one independent closed-form or exhaustive
 counterpart in the same file, so a sampler bug shows up as a disagreement rather
 than as a plausible-looking curve.
 
+Two Monte Carlo updates are provided: a local checkerboard Metropolis sweep,
+and the Wolff single-cluster update, which has no critical slowing down and is
+what makes a finite-size-scaling study at $T_c$ trustworthy.
+
 The Hamiltonian is the nearest-neighbour Ising model on an $L \times L$ square
 lattice with periodic boundaries,
 
@@ -26,6 +30,7 @@ is what makes the validation credible:
 References:
     Onsager, L. (1944). *Phys. Rev.* **65**, 117.
     Metropolis, N. et al. (1953). *J. Chem. Phys.* **21**, 1087.
+    Wolff, U. (1989). *Phys. Rev. Lett.* **62**, 361.
 """
 
 from __future__ import annotations
@@ -36,8 +41,9 @@ from jax.scipy.special import logsumexp
 
 from qjax.shared.types import Array, Scalar
 
-#: Largest lattice whose full state space is enumerated by
-#: `ising_exact_observables` (``2**16 = 65536`` states at ``L = 4``).
+#: Largest number of spins whose full state space is enumerated by
+#: `ising_exact_observables`. It admits every lattice up to ``L = 4``
+#: (``2**16 = 65536`` states); the headroom to 20 is for non-square use.
 MAX_ENUMERATED_SPINS: int = 20
 
 #: Largest lattice handled by `ising_transfer_matrix_log_z` (a
@@ -158,6 +164,105 @@ def metropolis_chain(
     return final
 
 
+def wolff_update(
+    key: jax.Array, spins: jax.Array, beta: Scalar, coupling: Scalar = 1.0
+) -> jax.Array:
+    r"""One Wolff single-cluster update.
+
+    A seed site is chosen uniformly, a cluster is grown outward through bonds
+    between *equal* spins with probability $p = 1 - e^{-2\beta J}$ each, and the
+    whole cluster is flipped. The move is accepted unconditionally: $p$ is
+    exactly the value that makes the cluster-construction and Boltzmann factors
+    cancel.
+
+    Why it is here rather than only `checkerboard_sweep`: a local update's
+    autocorrelation time grows as $L^{z}$ with $z \approx 2.17$ at $T_c$,
+    while a cluster update has no such critical slowing down. Note that this
+    buys *decorrelation*, not a shortcut to equilibrium from a cold start: one
+    update flips one cluster, so a chain started from a random configuration
+    still needs enough updates for the cluster to have swept the lattice --
+    measured at $T_c$, ``L = 32`` is nowhere near equilibrium after 40 updates
+    and settled by about 120. Local sweeps relax a random start more evenly;
+    cluster updates decorrelate an equilibrated one far better.
+
+    The cluster is grown as a boolean mask in a `jax.lax.while_loop`: every
+    iteration draws one fresh uniform per *bond*, so two frontier sites adjacent
+    to the same candidate test their bonds independently, as the algorithm
+    requires. The loop is data-dependent, so this is jittable but not
+    reverse-differentiable -- which a Monte Carlo update never needs to be.
+
+    Args:
+        key: PRNG key.
+        spins: A single configuration of shape ``(L, L)``.
+        beta: Inverse temperature ``1 / T`` (a scalar; ``vmap`` for a batch).
+        coupling: Exchange coupling ``J``, positive (ferromagnetic).
+
+    Returns:
+        The configuration after one cluster flip, shape ``(L, L)``.
+    """
+    beta = jnp.asarray(beta, dtype=jnp.result_type(float))
+    coupling = jnp.asarray(coupling, dtype=jnp.result_type(float))
+    size = spins.shape[-1]
+    add_probability = -jnp.expm1(-2.0 * beta * coupling)
+
+    seed_key, grow_key = jax.random.split(key)
+    seed = jax.random.randint(seed_key, (2,), 0, size)
+    start = jnp.zeros((size, size), dtype=bool).at[seed[0], seed[1]].set(True)
+    aligned = spins == spins[seed[0], seed[1]]
+
+    Carry = tuple[jax.Array, jax.Array, jax.Array]
+
+    def growing(carry: Carry) -> jax.Array:
+        _, _, frontier = carry
+        return jnp.any(frontier)
+
+    def grow(carry: Carry) -> Carry:
+        grow_key, cluster, frontier = carry
+        grow_key, right_key, down_key = jax.random.split(grow_key, 3)
+        # One uniform per bond per iteration: ``right[i, j]`` is the bond from
+        # (i, j) to (i, j+1) and ``down[i, j]`` the bond to (i+1, j).
+        right = jax.random.uniform(right_key, (size, size)) < add_probability
+        down = jax.random.uniform(down_key, (size, size)) < add_probability
+        reached = (
+            jnp.roll(frontier & right, 1, axis=-1)  # bond crossed rightward
+            | (jnp.roll(frontier, -1, axis=-1) & right)  # ... and leftward
+            | jnp.roll(frontier & down, 1, axis=-2)  # downward
+            | (jnp.roll(frontier, -1, axis=-2) & down)  # upward
+        )
+        accepted = reached & aligned & ~cluster
+        return grow_key, cluster | accepted, accepted
+
+    _, cluster, _ = jax.lax.while_loop(growing, grow, (grow_key, start, start))
+    return jnp.where(cluster, -spins, spins)
+
+
+def wolff_chain(
+    key: jax.Array, spins: jax.Array, beta: Scalar, updates: int, coupling: Scalar = 1.0
+) -> jax.Array:
+    """Run ``updates`` Wolff cluster updates and return the final configuration.
+
+    Args:
+        key: PRNG key.
+        spins: Initial configuration of shape ``(L, L)``.
+        beta: Inverse temperature ``1 / T`` (a scalar; ``vmap`` for a batch).
+        updates: Number of cluster updates (a Python int; it sets the scan
+            length).
+        coupling: Exchange coupling ``J``.
+
+    Returns:
+        The configuration after ``updates`` cluster flips, shape ``(L, L)``.
+    """
+    Carry = tuple[jax.Array, jax.Array]
+
+    def step(carry: Carry, _: None) -> tuple[Carry, None]:
+        chain_key, state = carry
+        chain_key, subkey = jax.random.split(chain_key)
+        return (chain_key, wolff_update(subkey, state, beta, coupling)), None
+
+    (_, final), _ = jax.lax.scan(step, (key, spins), None, length=updates)
+    return final
+
+
 def sample_ising(
     key: jax.Array,
     size: int,
@@ -165,26 +270,44 @@ def sample_ising(
     num_samples: int,
     sweeps: int,
     coupling: Scalar = 1.0,
+    algorithm: str = "metropolis",
 ) -> jax.Array:
-    """Draw equilibrium configurations at each of several temperatures.
+    r"""Draw equilibrium configurations at each of several temperatures.
 
     Every sample gets its *own* independent chain, started from a random
     configuration. Critical slowing down therefore affects only how long each
     chain must run to equilibrate, never the independence of the samples -- so
     no decorrelation sweeps between samples are needed.
 
+    How long "long enough" is depends on the update, and the two available here
+    fail in opposite directions: Metropolis sweeps relax a random start evenly
+    but decorrelate slowly at $T_c$ ($\tau \sim L^{2.17}$), while Wolff
+    cluster updates decorrelate without critical slowing down but need enough
+    updates to have touched the whole lattice first. Both are checked against
+    exhaustive enumeration in the test suite.
+
     Args:
         key: PRNG key.
         size: Linear lattice size ``L``.
         temperatures: Temperatures to sample at, shape ``(T,)``.
         num_samples: Independent configurations per temperature.
-        sweeps: Equilibration sweeps per chain (a Python int).
+        sweeps: Equilibration steps per chain (a Python int) -- Metropolis
+            sweeps, or Wolff cluster updates when ``algorithm="wolff"``.
         coupling: Exchange coupling ``J``.
+        algorithm: ``"metropolis"`` for `checkerboard_sweep`, ``"wolff"`` for
+            `wolff_update`.
 
     Returns:
         Configurations of shape ``(T, num_samples, L, L)`` with entries in
         ``{-1.0, +1.0}``.
+
+    Raises:
+        ValueError: If ``algorithm`` is neither ``"metropolis"`` nor
+            ``"wolff"``.
     """
+    if algorithm not in ("metropolis", "wolff"):
+        raise ValueError(f"algorithm must be 'metropolis' or 'wolff'; got {algorithm!r}.")
+    chain = metropolis_chain if algorithm == "metropolis" else wolff_chain
     temperatures = jnp.asarray(temperatures, dtype=jnp.result_type(float))
     num_temperatures = temperatures.shape[0]
     num_chains = num_temperatures * num_samples
@@ -194,7 +317,7 @@ def sample_ising(
     initial = jnp.where(start, 1.0, -1.0)
     betas = jnp.repeat(1.0 / temperatures, num_samples)
 
-    run = jax.vmap(lambda k, s, b: metropolis_chain(k, s, b, sweeps, coupling))
+    run = jax.vmap(lambda k, s, b: chain(k, s, b, sweeps, coupling))
     final = run(keys[1:], initial, betas)
     return final.reshape(num_temperatures, num_samples, size, size)
 
@@ -442,6 +565,8 @@ __all__ = [
     "ising_magnetization",
     "checkerboard_sweep",
     "metropolis_chain",
+    "wolff_update",
+    "wolff_chain",
     "sample_ising",
     "ising_all_configurations",
     "ising_boltzmann_probabilities",

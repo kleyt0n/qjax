@@ -86,6 +86,19 @@ Laptop tier (`L` up to 16, 4 seeds), against exact values:
 $T_c$ is recovered to **0.6 %** by a label-free estimator and $\nu$ and $\beta$ to
 **3 %** each, from raw spin configurations.
 
+Two things about the method are worth stating outright rather than leaving in the
+source. First, the two **physics baselines** (the Binder crossing and the
+susceptibility peak) are read inside a fixed window $T \in [2.00, 2.62]$, where
+the temperature grid is dense. That window contains the exact $T_c$, so those two
+estimators are told roughly where to look — the restriction *helps* them, since a
+noisy Binder curve crosses many times far from $T_c$, which is why it is applied
+to them and not to the learned estimators. The confusion scan and the classifier
+crossings use the full grid. Second, equilibration was checked rather than
+assumed: following one set of chains at $T_c$ well past the shipped budget shows
+no residual drift in $u$ at any size up to $L = 64$, and `test_physics_lattice.py`
+pins the sampled $u(T_c)$ at $L = 8$ against the transfer matrix, which is exact
+for the finite periodic lattice.
+
 ## What $q$ buys, and where it stops
 
 Scored against the order parameter rather than against the temperature labels

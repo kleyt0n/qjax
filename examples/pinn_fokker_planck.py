@@ -33,42 +33,52 @@ network *and* its own residual model together.
 **What the run finds, in three parts.**
 
 *The premise holds, and by more than the original paper claims.* Collecting the
-residuals of a mean-squared-trained PINN and fitting a ``q``-Gaussian to them by
-maximum likelihood gives ``q_loss = 2.19 +- 0.03`` and ``2.32 +- 0.02`` at the two
-equation indices -- forty-six and seventy-three standard errors from the Gaussian
-``q_loss = 1`` that a mean-squared objective assumes, with excess kurtosis 24 and
-18. In Student-t terms that is ``nu = 0.67`` and ``0.51``: **fewer than one degree
-of freedom, heavier-tailed than a Cauchy distribution**, so the residuals do not
-merely have a heavy tail, they have no finite mean. Because this PDE has a
-closed-form solution, that is measured against ground truth rather than against
-another approximation.
+residuals of a mean-squared-trained PINN at *held-out* collocation points and
+fitting a ``q``-Gaussian to them by maximum likelihood gives
+``q_loss = 2.11 +- 0.03`` and ``2.40 +- 0.02`` at the two equation indices --
+forty and eighty-five standard errors from the Gaussian ``q_loss = 1`` that a
+mean-squared objective assumes. In Student-t terms that is ``nu = 0.80`` and
+``0.43``: **fewer than one degree of freedom, heavier-tailed than a Cauchy
+distribution**, so the residuals do not merely have a heavy tail, they have no
+finite mean. Because this PDE has a closed-form solution, that is measured
+against ground truth rather than against another approximation.
 
-*The remedy backfires here, and the reason is instructive.* A robust loss is,
-by construction, a loss that **tolerates large residuals**. In a *forward* PDE
-problem the residual is not a noise model: it is the only thing propagating the
-initial condition into the interior. Downweighting it removes that force, and the
+*Where their assumptions hold, their remedy works -- and it is one line here.*
+At ``q = 1.5``, where the solution is smooth, the deformed likelihood cuts the
+relative error to ``0.75x`` (fixed index) and ``0.67x`` (learned index) of the
+mean-squared arm, and it does so at **every one of eight seeds**. That matters
+because the seed-to-seed spread is larger than the gap between arms: only the
+per-seed pairing -- every arm at a seed trains on the same collocation points --
+separates the two, which is why the comparison is reported paired.
+
+*At a free boundary it is catastrophic, and the reason is instructive.* At
+``q = 0.5`` the same loss is **fifteen times worse**, at zero seeds out of eight.
+A robust loss is, by construction, a loss that *tolerates large residuals*; in a
+*forward* PDE problem the residual is not a noise model but the only thing
+propagating the initial condition into the interior. Downweight it and the
 solution decays into the spurious family this equation carries -- *every*
 spatially uniform density solves it exactly. Measured: all three arms fit the
-initial condition (peak 1.32, 1.28, 1.26 against the exact 1.3258), but by
-``t = 1`` the deformed arms have collapsed to a mass of 0.003 against the exact
-1.0, ending with residuals forty times *larger* than the mean-squared arm and a
-loss that does not mind. Where the solution is smooth (``q = 1.5``) the effect is
-neutral; where there is a free boundary (``q = 0.5``) it is catastrophic.
+initial condition (peak 1.328, 1.274, 1.273 against the exact 1.3258), but by
+``t = 1`` the deformed arms hold a mass of 0.005 against the exact 1.0, with
+residuals twenty-five times *larger* than the mean-squared arm and a loss that
+does not mind.
 
-*Joint descent is not EM.* The learned index settles at 1.07-1.15 while the
-index fitted to the residuals says 2.19-2.32 -- a gap of forty to seventy standard
-errors. Alternating -- fit the residual model to a
-*fixed* network, then the network to a fixed model, as EM does -- is not the same
-as descending on both at once, because a network free to change its residuals can
-move them to suit the index instead of the other way round. That is an argument
-*for* the EM structure, arrived at by removing it.
+So the useful distinction is not whether residuals are heavy-tailed -- they are,
+everywhere here -- but **whether the tail is noise or signal**. At a free
+boundary it is signal: the residual is large because the solution genuinely has a
+kink there, and discounting it means declining to fit the only hard part of the
+domain.
 
-None of this refutes Abijuru et al.: their setting is heavy tails arising from
-heterogeneity and noisy or misspecified data, where downweighting is the right
-move, and their EM keeps the two estimates separate. The distinction this example
-draws is that **heavy-tailed residuals do not by themselves license a robust
-loss** -- what matters is whether the tail is noise or signal, and at a free
-boundary it is signal.
+*Joint descent is not EM.* The learned index settles at 1.28 and 1.04 while the
+index fitted to the residuals says 2.11 and 2.40 -- gaps of thirty and eighty-three
+standard errors. Alternating -- fit the residual model to a *fixed* network, then
+the network to a fixed model, as EM does -- is not the same as descending on both
+at once, because a network free to change its residuals can move them to suit the
+index instead of the other way round. Notably the learned-index arm is still the
+*best* arm at ``q = 1.5``: mild robustness helps even when the index that
+delivers it disagrees with the residuals it is fitted to. Which is an argument for
+the EM structure and against reading too much into a learned index, arrived at by
+removing the alternation.
 
 Two entropic indices appear here and they are unrelated, so they are named apart
 throughout: ``q`` is the *equation's* index, fixed by the physics
@@ -84,7 +94,11 @@ residuals are heavy-tailed" is measured against ground truth rather than against
 another approximation.
 
 Only the output head is held fixed: `jax.nn.softplus`, the conventional choice.
-The ablation is entirely in the loss.
+The ablation is entirely in the loss. The baseline holds its residual *scale*
+fixed as well, so it is a plain mean-squared residual and not a Gaussian
+likelihood with a fitted variance -- the two differ, because a fitted scale
+re-weights the residual term against the initial and boundary terms as training
+proceeds.
 
 Run with: ``uv run python examples/pinn_fokker_planck.py``
 Add ``--full`` (or set ``QJAX_FULL=1``) for the larger configuration.
@@ -123,14 +137,22 @@ DIFFUSIVITY, BETA_INITIAL, FINAL_TIME = 1.0, 4.0, 1.0
 #: most heterogeneous, which is the regime the heavy-tail claim is about.
 INDICES = (0.5, 1.5)
 
-#: (label, q_loss, learnable). The *residual model's* index -- unrelated to the
-#: equation's. ``q_loss = 1`` is exactly the mean-squared residual, i.e. standard
-#: PINN training; ``q_loss = 1.5`` is a Student-t with nu = 3 held fixed, which is
-#: the ICML setup; the third arm learns it.
+#: (label, q_loss, learnable, learn_scale). The *residual model's* index --
+#: unrelated to the equation's. ``q_loss = 1`` with the scale held fixed is
+#: exactly the mean-squared residual, i.e. standard PINN training;
+#: ``q_loss = 1.5`` is a Student-t with nu = 3 held fixed, which is the ICML
+#: setup; the third arm learns the index too.
+#:
+#: ``learn_scale`` matters more than it looks. A Gaussian likelihood whose scale
+#: is fitted is *not* a mean-squared residual: as the residual shrinks the fitted
+#: beta grows, so the residual term's weight relative to the fixed initial and
+#: boundary weights drifts during training. The baseline therefore holds its
+#: scale fixed, matching the paper's plain-MSE baseline, while the two deformed
+#: arms fit theirs by maximum likelihood, matching their EM.
 LOSS_ARMS = (
-    ("MSE ($q_L = 1$)", 1.0, False),
-    ("fixed $q_L = 1.5$", 1.5, False),
-    ("learnable $q_L$", 0.0, True),
+    ("MSE ($q_L = 1$)", 1.0, False, False),
+    ("fixed $q_L = 1.5$", 1.5, False, True),
+    ("learnable $q_L$", 0.0, True, True),
 )
 BASELINE_ARM = "MSE ($q_L = 1$)"
 LEARNED_ARM = "learnable $q_L$"
@@ -176,7 +198,7 @@ def configuration(*, quick: bool, full: bool) -> dict:
         "collocation": 1024,
         "initial_points": 256,
         "boundary_points": 128,
-        "seeds": (0, 1, 2, 3),
+        "seeds": (0, 1, 2, 3, 4, 5, 6, 7),
         "grid": 401,
         "fit_steps": 3000,
     }
@@ -299,6 +321,30 @@ def init_params(key: jax.Array, hidden: tuple[int, ...], peak: float) -> dict:
     }
 
 
+def adam_rate(step, total: int):
+    """Cosine-annealed learning rate, from ``LR`` down to one per cent of it.
+
+    A function of the *global* step: the training scan runs in blocks, and
+    feeding this the within-block index would leave the rate pinned near ``LR``
+    for the whole run.
+    """
+    decay = 0.5 * (1.0 + jnp.cos(jnp.pi * jnp.asarray(step, dtype=jnp.result_type(float)) / total))
+    return LR * (0.01 + 0.99 * decay)
+
+
+def boundary_errors(net, times, half_width: float, q, peak: float):
+    """Signed boundary error at each end of the domain, shape ``(n, 2)``.
+
+    Both ends are kept separate on purpose. Penalizing their *sum* -- which is
+    the natural one-liner -- would let an error at ``+L`` be cancelled by the
+    opposite error at ``-L`` at no cost, leaving an antisymmetric boundary error
+    free.
+    """
+    predicted = jax.vmap(lambda t: jnp.stack([net(half_width, t), net(-half_width, t)]))(times)
+    exact = qp.nlfp_density(half_width, times, q, DIFFUSIVITY, BETA_INITIAL)[:, None]
+    return (predicted - exact) / peak
+
+
 def resolve_loss_index(params: dict, q_fixed, learnable: bool):
     """The residual model's index: a constant, or the bounded learnable one."""
     if learnable:
@@ -354,7 +400,7 @@ def residuals_of(params, points, q, half_width, centre, scale):
     )
 
 
-def total_loss(params, points, q, q_fixed, learnable, half_width, peak, centre, scale):
+def total_loss(params, points, q, q_fixed, learnable, learn_scale, half_width, peak, centre, scale):
     r"""Residual negative log-likelihood, plus initial and boundary conditions.
 
     The residual term is $-\langle \log \mathcal G_{q_L}(r)\rangle$ with the
@@ -373,6 +419,8 @@ def total_loss(params, points, q, q_fixed, learnable, half_width, peak, centre, 
     residual = residuals_of(params, points, q, half_width, centre, scale) / (peak / FINAL_TIME)
     q_loss = resolve_loss_index(params, q_fixed, learnable)
     beta_loss = jax.nn.softplus(params["beta_raw"]) + 1e-6
+    if not learn_scale:
+        beta_loss = jax.lax.stop_gradient(beta_loss)
     physics = -jnp.mean(qjax.q_gaussian_logpdf(residual, q_loss, beta_loss))
 
     def net(x, t):
@@ -380,15 +428,12 @@ def total_loss(params, points, q, q_fixed, learnable, half_width, peak, centre, 
 
     initial = jax.vmap(lambda x: net(x, 0.0))(points["initial_x"])
     exact_initial = qp.nlfp_density(points["initial_x"], 0.0, q, DIFFUSIVITY, BETA_INITIAL)
-    boundary = jax.vmap(lambda t: net(half_width, t) + net(-half_width, t))(points["boundary_t"])
-    exact_boundary = 2.0 * qp.nlfp_density(
-        half_width, points["boundary_t"], q, DIFFUSIVITY, BETA_INITIAL
-    )
+    boundary = boundary_errors(net, points["boundary_t"], half_width, q, peak)
 
     return (
         physics
         + WEIGHT_INITIAL * jnp.mean(((initial - exact_initial) / peak) ** 2)
-        + WEIGHT_BOUNDARY * jnp.mean(((boundary - exact_boundary) / peak) ** 2)
+        + WEIGHT_BOUNDARY * jnp.mean(boundary**2)
     )
 
 
@@ -459,13 +504,14 @@ def fit_index(samples, steps: int, learning_rate=0.02):
 # --------------------------------------------------------------------------- #
 # Training
 # --------------------------------------------------------------------------- #
-@partial(jax.jit, static_argnames=("learnable", "steps", "hidden", "trace_every"))
+@partial(jax.jit, static_argnames=("learnable", "learn_scale", "steps", "hidden", "trace_every"))
 def solve(
     key,
     points,
     q,
     q_fixed,
     learnable,
+    learn_scale,
     steps,
     hidden,
     trace_every,
@@ -479,6 +525,12 @@ def solve(
     One ``jax.grad`` covers the network *and* the residual model, because
     ``q_loss`` and ``beta_loss`` sit in the same pytree and ``qjax.q_gaussian_logpdf``
     is differentiable in its index. That is what replaces the EM alternation.
+
+    Training is scanned in blocks so the trace can be recorded without keeping a
+    per-step history, and the *global* step index is carried through the blocks:
+    both Adam's bias correction and the cosine schedule are functions of total
+    progress, and feeding either the within-block index restarts the warm-up 40
+    times and leaves the learning rate pinned at its initial value.
     """
     params = init_params(key, hidden, peak)
     b1, b2, eps = 0.9, 0.999, 1e-8
@@ -499,7 +551,7 @@ def solve(
     def step(carry, t):
         p, m, v = carry
         grads = jax.grad(total_loss)(
-            p, points, q, q_fixed, learnable, half_width, peak, centre, scale
+            p, points, q, q_fixed, learnable, learn_scale, half_width, peak, centre, scale
         )
         norm = jnp.sqrt(
             sum(jnp.sum(g**2) for g in grads["weights"] + grads["biases"])
@@ -511,21 +563,22 @@ def solve(
         m = jax.tree_util.tree_map(lambda m, g: b1 * m + (1 - b1) * g, m, grads)
         v = jax.tree_util.tree_map(lambda v, g: b2 * v + (1 - b2) * g * g, v, grads)
         bc1, bc2 = 1 - b1 ** (t + 1), 1 - b2 ** (t + 1)
-        decay = 0.5 * (1.0 + jnp.cos(jnp.pi * t / steps))
-        rate = LR * (0.01 + 0.99 * decay)
+        rate = adam_rate(t, total)
         p = jax.tree_util.tree_map(
             lambda p, m, v: p - rate * (m / bc1) / (jnp.sqrt(v / bc2) + eps), p, m, v
         )
         return (p, m, v), None
 
-    def block(carry, _):
-        carry, _ = jax.lax.scan(step, carry, jnp.arange(trace_every))
+    # The scan runs whole blocks, so the schedule spans what is actually run.
+    total = max(steps // trace_every, 1) * trace_every
+
+    def block(carry, first):
+        carry, _ = jax.lax.scan(step, carry, first + jnp.arange(trace_every))
         p = carry[0]
         return carry, jnp.stack([relative_error(p), resolve_loss_index(p, q_fixed, learnable)])
 
-    (params, _, _), trace = jax.lax.scan(
-        block, (params, m, v), None, length=max(steps // trace_every, 1)
-    )
+    blocks = max(steps // trace_every, 1)
+    (params, _, _), trace = jax.lax.scan(block, (params, m, v), trace_every * jnp.arange(blocks))
     return params, trace
 
 
@@ -594,18 +647,28 @@ def run(config: dict) -> dict:
         half_width = domain_half_width(q)
         results["half_width"][q] = half_width
         peak = float(qp.nlfp_density(0.0, 0.0, q, DIFFUSIVITY, BETA_INITIAL))
-        points = sample_points(jax.random.PRNGKey(0), config, q, half_width)
         centre, scale = output_map(q, half_width)
+        # One collocation set per seed, shared by every arm at that seed: the arm
+        # comparison stays paired, while the seed spread reflects point placement
+        # as well as initialization.
+        draw = partial(sample_points, config=config, q=q, half_width=half_width)
+        points = jax.vmap(draw)(jnp.stack([jax.random.PRNGKey(seed) for seed in config["seeds"]]))
+        # A *held-out* collocation set for the residual distribution. The whole
+        # finding is about that distribution, so it is measured off the points the
+        # arm trained on.
+        held_out = jax.vmap(draw)(
+            jnp.stack([jax.random.PRNGKey(9000 + seed) for seed in config["seeds"]])
+        )
         print(f"  equation q = {q}  (half-width {half_width:.2f})")
 
-        for label, q_fixed, learnable in LOSS_ARMS:
+        for label, q_fixed, learnable, learn_scale in LOSS_ARMS:
             keys = jnp.stack([jax.random.PRNGKey(100 + seed) for seed in config["seeds"]])
             one_seed = partial(
                 solve,
-                points=points,
                 q=q,
                 q_fixed=q_fixed,
                 learnable=learnable,
+                learn_scale=learn_scale,
                 steps=config["steps"],
                 hidden=config["hidden"],
                 trace_every=trace_every,
@@ -614,11 +677,11 @@ def run(config: dict) -> dict:
                 centre=centre,
                 scale=scale,
             )
-            stacked, traces = jax.vmap(one_seed)(keys)
+            stacked, traces = jax.vmap(one_seed)(keys, points)
             metrics = [
                 measure(
                     jax.tree_util.tree_map(lambda leaf, i=i: leaf[i], stacked),
-                    points,
+                    jax.tree_util.tree_map(lambda leaf, i=i: leaf[i], held_out),
                     q,
                     q_fixed,
                     learnable,
@@ -651,7 +714,7 @@ def run(config: dict) -> dict:
 # --------------------------------------------------------------------------- #
 def plot_main(results: dict, path: Path) -> None:
     """The residual distribution, the correspondence, and what learning q buys."""
-    labels = [label for label, _, _ in LOSS_ARMS]
+    labels = [label for label, *_ in LOSS_ARMS]
     arm_colors = dict(zip(labels, qcolors(len(labels)), strict=True))
 
     fig, axes = plt.subplots(2, 3, figsize=(13.4, 7.4))
@@ -813,31 +876,60 @@ def plot_main(results: dict, path: Path) -> None:
     ax.set_title("(e) held-out error (median over seeds)", fontsize=10)
     ax.legend(fontsize=6.4, ncols=2, loc="lower left")
 
-    # (f) scoreboard.
+    # (f) the comparison, paired by seed. Arm-to-arm differences at q = 1.5 are
+    #     smaller than the seed-to-seed spread, so plotting medians with a seed
+    #     range hides the result: every seed's own ratio is what settles it.
     ax = axes[1, 2]
-    positions = np.arange(len(INDICES))
-    width = 0.26
-    offsets = np.linspace(-width, width, len(labels))
-    for offset, label in zip(offsets, labels, strict=True):
-        values = [np.array([m["l2_error"] for m in results["metrics"][q, label]]) for q in INDICES]
-        medians = [float(np.median(v)) for v in values]
-        lower = [m - float(v.min()) for m, v in zip(medians, values, strict=True)]
-        upper = [float(v.max()) - m for m, v in zip(medians, values, strict=True)]
-        ax.bar(
-            positions + offset,
-            medians,
-            yerr=[lower, upper],
-            width=width,
+    deformed = [label for label in labels if label != BASELINE_ARM]
+    positions = np.arange(len(INDICES) * len(deformed), dtype=float)
+    ax.axhline(1.0, color="0.35", lw=1.0, ls=":", zorder=1)
+    ticks = []
+    for slot, (q, label) in enumerate([(q, label) for q in INDICES for label in deformed]):
+        baseline = np.array([m["l2_error"] for m in results["metrics"][q, BASELINE_ARM]])
+        ratio = np.array([m["l2_error"] for m in results["metrics"][q, label]]) / baseline
+        jitter = np.linspace(-0.13, 0.13, len(ratio))
+        ax.scatter(
+            positions[slot] + jitter,
+            ratio,
+            s=17,
             color=arm_colors[label],
-            label=label,
-            error_kw={"lw": 0.9},
+            edgecolor="white",
+            linewidth=0.4,
+            zorder=3,
         )
+        ax.hlines(
+            float(np.median(ratio)),
+            positions[slot] - 0.24,
+            positions[slot] + 0.24,
+            color=arm_colors[label],
+            lw=2.2,
+            zorder=4,
+        )
+        wins = int(np.sum(ratio < 1.0))
+        ax.annotate(
+            f"{wins}/{len(ratio)}",
+            (positions[slot], float(np.median(ratio))),
+            textcoords="offset points",
+            xytext=(0, -15 if np.median(ratio) < 1.0 else 9),
+            ha="center",
+            fontsize=7.2,
+            color=arm_colors[label],
+        )
+        ticks.append(f"$q={q}$\n{label}")
     ax.set_yscale("log")
     ax.set_xticks(positions)
-    ax.set_xticklabels([rf"equation $q={q}$" for q in INDICES])
-    ax.set_ylabel(r"relative $L^2$ error")
-    ax.set_title("(f) scoreboard (median, seed range)", fontsize=10)
-    ax.legend(fontsize=7.4)
+    ax.set_xticklabels(ticks, fontsize=6.8)
+    ax.set_ylabel(r"$L^2$ error $\div$ MSE arm, same seed")
+    ax.set_title("(f) paired by seed (dashes: median)", fontsize=10)
+    ax.text(
+        0.03,
+        0.5,
+        "below 1: the\ndeformed loss helps",
+        transform=ax.transAxes,
+        fontsize=6.8,
+        color="0.35",
+        va="center",
+    )
 
     save_figure(fig, path)
     plt.close(fig)
@@ -846,7 +938,7 @@ def plot_main(results: dict, path: Path) -> None:
 # --------------------------------------------------------------------------- #
 def report(results: dict) -> None:
     """Print the validation table the docs page reproduces."""
-    labels = [label for label, _, _ in LOSS_ARMS]
+    labels = [label for label, *_ in LOSS_ARMS]
 
     print("\n  validation")
     print(f"    {'quantity':<50}{'measured':>14}{'exact':>14}")
@@ -863,7 +955,7 @@ def report(results: dict) -> None:
             residual = jax.vmap(lambda x, t=t, q=q: qp.nlfp_residual(exact, x, t, q, DIFFUSIVITY))(
                 positions
             )
-            rate = jax.vmap(lambda x, t=t, q=q: jax.grad(exact, argnums=1)(x, t))(positions)
+            rate = jax.vmap(lambda x, t=t: jax.grad(exact, argnums=1)(x, t))(positions)
             worst = max(worst, float(jnp.max(jnp.abs(residual))))
             scale = max(scale, float(jnp.max(jnp.abs(rate))))
     print(f"    {'residual of the exact solution (max)':<50}{worst:>14.2e}{0.0:>14.2e}")
@@ -941,19 +1033,26 @@ def report(results: dict) -> None:
             )
         print(f"      {'  exact':<26}{exact_peak:>14.4f}{1.0:>14.4f}{0.0:>15.4f}")
 
-    print("\n    does the deformed residual likelihood help?")
+    # Paired by seed, because the seed-to-seed spread is comparable to the
+    # difference between arms: every arm at a given seed trained on the *same*
+    # collocation points, so the per-seed ratio is the informative statistic and
+    # the count of seeds that favour the deformed arm is the honest summary.
+    print("\n    does the deformed residual likelihood help? (paired by seed)")
+    print(f"      {'arm':<28}{'median ratio':>14}{'range':>18}{'seeds favouring':>18}")
     for q in INDICES:
-        baseline = np.median([m["l2_error"] for m in results["metrics"][q, BASELINE_ARM]])
+        baseline = np.array([m["l2_error"] for m in results["metrics"][q, BASELINE_ARM]])
         for label in labels:
             if label == BASELINE_ARM:
                 continue
             arm = np.array([m["l2_error"] for m in results["metrics"][q, label]])
-            spread = float(arm.max() - arm.min())
-            change = 100.0 * (np.median(arm) - baseline) / baseline
-            verdict = "better" if change < 0 else "worse"
+            ratio = arm / baseline
+            wins = int(np.sum(ratio < 1.0))
+            verdict = "better" if np.median(ratio) < 1.0 else "worse"
+            name = f"q = {q}, {label.replace('$', '')}"
             print(
-                f"      q = {q}, {label.replace('$', ''):<18} {change:+6.1f}% vs MSE"
-                f"   (seed range {100 * spread / baseline:.1f}%)   {verdict}"
+                f"      {name:<28}{np.median(ratio):>13.2f}x"
+                f"{f'[{ratio.min():.2f}, {ratio.max():.2f}]':>18}"
+                f"{f'{wins}/{len(ratio)}':>18}   {verdict}"
             )
 
 

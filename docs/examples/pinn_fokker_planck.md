@@ -2,7 +2,8 @@
 
 > A 2026 ICML paper shows that physics-informed network residuals are heavy-tailed
 > and fixes it with a Student-t likelihood. That is a Tsallis method with the name
-> removed — and reading it as one shows both why it works and where it does not.
+> removed — and reading it as one reproduces the benefit in one line, then finds
+> the regime where it inverts.
 
 ## What it shows
 
@@ -45,30 +46,49 @@ learned.
 
 ### 1. The premise holds — by more than the original paper claims
 
-Collecting the residuals of a mean-squared-trained PINN and fitting a
-$q$-Gaussian by maximum likelihood:
+Collecting the residuals of a mean-squared-trained PINN at **held-out**
+collocation points and fitting a $q$-Gaussian by maximum likelihood:
 
 | equation $q$ | $\hat q_L$ from residuals | $\sigma$ | from Gaussian | excess kurtosis | Student-t $\nu$ |
 | --- | --- | --- | --- | --- | --- |
-| 0.5 | **2.194** | 0.026 | 46σ | 24.4 | 0.67 |
-| 1.5 | **2.323** | 0.018 | 73σ | 17.5 | 0.51 |
+| 0.5 | **2.110** | 0.027 | 41σ | 83 | 0.80 |
+| 1.5 | **2.401** | 0.017 | 85σ | 44 | 0.43 |
 
 $\nu < 1$ means **fewer than one degree of freedom — heavier-tailed than a Cauchy
 distribution**, so the residuals do not merely have a heavy tail, they have no
 finite mean. Because this PDE has a closed-form solution
 (`qjax.physics.nlfp_density`, whose own residual vanishes at $10^{-15}$), that is
-measured against ground truth rather than against another approximation.
+measured against ground truth rather than against another approximation. (The
+excess kurtosis is a witness of non-Gaussianity, not an estimate of anything: at
+$\hat q_L > 5/3$ the population fourth moment is infinite, so the sample value
+grows with the number of points.)
 
-### 2. The remedy backfires here, and the reason is instructive
+### 2. Where their assumptions hold, their remedy works — in one line
 
-| equation $q$ | arm | relative $L^2$ | vs MSE |
+At $q = 1.5$, where the solution is smooth, every seed is improved by the
+deformed likelihood:
+
+| arm | median $L^2$ ÷ MSE arm, same seed | range | seeds favouring |
 | --- | --- | --- | --- |
-| 0.5 | MSE ($q_L=1$) | **0.0472** | — |
-| 0.5 | fixed $q_L = 1.5$ | 0.8961 | +1797 % |
-| 0.5 | learnable $q_L$ | 0.8685 | +1739 % |
-| 1.5 | MSE ($q_L=1$) | **0.0244** | — |
-| 1.5 | fixed $q_L = 1.5$ | 0.0245 | +0.8 % |
-| 1.5 | learnable $q_L$ | 0.0276 | +13 % (seed range 45 %) |
+| fixed $q_L = 1.5$ | **0.75×** | [0.62, 0.91] | **8/8** |
+| learnable $q_L$ | **0.67×** | [0.36, 0.96] | **8/8** |
+
+The pairing is what makes this readable. The seed-to-seed spread of the
+mean-squared arm ($L^2$ from 0.012 to 0.040) is larger than the gap between the
+arms, so a plot of medians with a seed range hides the effect; every arm at a
+given seed trains on the *same* collocation points, so the per-seed ratio is the
+informative statistic. A sign test on 8/8 gives $p = 0.004$.
+
+### 3. At a free boundary it is catastrophic, and the reason is instructive
+
+At $q = 0.5$ — compact support, a moving front — the same loss is **fifteen times
+worse**, at zero seeds out of eight:
+
+| arm | median $L^2$ | ÷ MSE arm | seeds favouring |
+| --- | --- | --- | --- |
+| MSE ($q_L=1$) | **0.0596** | — | — |
+| fixed $q_L = 1.5$ | 0.8911 | 14.7× | 0/8 |
+| learnable $q_L$ | 0.8882 | 15.0× | 0/8 |
 
 A robust loss is, by construction, a loss that **tolerates large residuals**. In a
 *forward* PDE problem the residual is not a noise model: it is the only thing
@@ -81,32 +101,39 @@ The mechanism, measured:
 
 | arm | peak $p(\cdot,0)$ | mass at $t=1$ | RMS residual |
 | --- | --- | --- | --- |
-| $q=0.5$, MSE | 1.311 | 1.089 | 0.055 |
-| $q=0.5$, fixed $q_L=1.5$ | 1.279 | **0.003** | **1.795** |
-| $q=0.5$, learnable $q_L$ | 1.272 | **0.005** | 0.438 |
+| $q=0.5$, MSE | 1.328 | 1.141 | 0.110 |
+| $q=0.5$, fixed $q_L=1.5$ | 1.274 | **0.005** | **2.660** |
+| $q=0.5$, learnable $q_L$ | 1.273 | **0.005** | **2.719** |
 | exact | 1.326 | 1.000 | 0 |
 
 All three arms fit the initial condition. The deformed arms then let the solution
-**decay to nothing**, ending with residuals thirty times *larger* than the
-mean-squared arm and a loss that does not mind. Where the solution is smooth
-($q=1.5$) the effect is neutral; where there is a free boundary ($q=0.5$) it is
-catastrophic.
+**decay to nothing**, ending with residuals twenty-five times *larger* than the
+mean-squared arm and a loss that does not mind.
 
-### 3. Joint descent is not EM
+So the useful distinction is not whether residuals are heavy-tailed — they are, in
+both regimes — but **whether the tail is noise or signal**. At a free boundary it
+is signal: the residual is large because the solution genuinely has a kink there,
+and discounting it means declining to fit the only hard part of the domain.
 
-The learned index settles at 1.07–1.15 while the index fitted to the residuals
-says 2.19–2.32 — a gap of 41σ and 69σ. Alternating (fit the residual model to a
+### And: joint descent is not EM
+
+The learned index settles at 1.28 and 1.04 while the index fitted to the residuals
+says 2.11 and 2.40 — gaps of 30σ and 83σ. Alternating (fit the residual model to a
 *fixed* network, then the network to a fixed model, as EM does) is not the same as
 descending on both at once, because a network free to change its residuals can
-move them to suit the index rather than the other way round. That is an argument
-*for* the EM structure, arrived at by removing it.
+move them to suit the index rather than the other way round.
+
+Note that the learned-index arm is nonetheless the **best** arm at $q = 1.5$
+(0.67×): mild robustness helps even when the index delivering it disagrees with
+the residuals it was fitted to. Which is an argument both for the EM structure and
+against reading much into a learned index — arrived at by removing the alternation.
 
 ## Result
 
 <figure markdown>
-  ![the solution, the residual survival function, the score correspondence, the learned index, the held-out error, and the scoreboard](../img/examples/pinn_fokker_planck.png)
+  ![the solution, the residual survival function, the score correspondence, the learned index, the held-out error, and the paired comparison](../img/examples/pinn_fokker_planck.png)
   <figcaption markdown>
-  (a) The solution at both equation indices. (b) The ICML claim, measured: the survival function $P(|r|>u)$ of the residuals against the Gaussian a mean-squared objective assumes, and against the fitted $q$-Gaussian. (c) **The correspondence**: the $q$-Gaussian score (coloured) and the Student-t EM weight at $\nu=(3-q_L)/(q_L-1)$ (thick grey) coincide; $q_L=1$ is flat at one, i.e. no reweighting. (d) The learned $q_L$ against the $q_L$ fitted to the residuals (dashed) — they do not meet. (e) Held-out error against the exact solution; the deformed arms at $q=0.5$ never descend. (f) Scoreboard, median and seed range.
+  (a) The solution at both equation indices. (b) The ICML claim, measured: the survival function $P(|r|>u)$ of the residuals against the Gaussian a mean-squared objective assumes, and against the fitted $q$-Gaussian. (c) **The correspondence**: the $q$-Gaussian score (coloured) and the Student-t EM weight at $\nu=(3-q_L)/(q_L-1)$ (thick grey) coincide; $q_L=1$ is flat at one, i.e. no reweighting. (d) The learned $q_L$ against the $q_L$ fitted to the residuals (dashed) — they do not meet. (e) Held-out error against the exact solution; the deformed arms at $q=0.5$ never descend. (f) The comparison paired by seed: every point is one seed's error divided by the mean-squared arm's error at that same seed, so below 1 means the deformed loss helped.
   </figcaption>
 </figure>
 
@@ -119,40 +146,43 @@ move them to suit the index rather than the other way round. That is an argument
 | $q$-Gaussian score vs. Student-t EM score | $1.8\times10^{-15}$ | 0 |
 | weight at $q_L=1$ (no reweighting) | 1.000000 | 1 |
 
-## What this does and does not say
+## How the comparison is kept fair
 
-It does **not** refute Abijuru et al. Their setting is heavy tails arising from
-heterogeneity and noisy or misspecified data, where downweighting is the right
-move, and their EM keeps the two estimates separate — both differences matter, and
-both cut in their favour here. The distinction this example draws is narrower and,
-we think, generally useful:
-
-**Heavy-tailed residuals do not by themselves license a robust loss.** What
-matters is whether the tail is *noise* or *signal*. At a free boundary it is
-signal — the residual is large because the solution genuinely has a kink there —
-and discounting it means declining to fit the only part of the domain that is
-hard.
-
-Two caveats on our side: at 6000 steps the mean-squared arms are still descending,
-so this is a comparison at equal budget rather than at convergence; and the loss
-weights are fixed across arms, so a deformed arm that downweights its residual
-term is also shifting the balance against the initial and boundary terms. That
-shift *is* the mechanism, but a practitioner could compensate for it, and we did
-not — compensating per arm would have measured the compensation.
+- **The baseline is a plain mean-squared residual**, not a Gaussian likelihood
+  with a fitted variance. Those differ: a fitted scale grows as the residual
+  shrinks, which silently re-weights the residual term against the initial and
+  boundary terms during training. The baseline therefore holds its scale fixed,
+  while the two deformed arms fit theirs by maximum likelihood, as the paper's EM
+  does.
+- **The loss weights are identical across arms** (100 on both the initial and the
+  boundary term). A deformed arm that downweights its residual term is therefore
+  also shifting the balance toward those two. That shift *is* the mechanism at the
+  free boundary; a practitioner could compensate for it, and we did not, because
+  compensating per arm would have measured the compensation.
+- **Both boundaries are penalized separately**, not their sum: the natural
+  one-liner lets an error at $+L$ cancel the opposite error at $-L$ for free.
+- **The residual distribution is measured on held-out collocation points**, and
+  each seed draws its own training set, shared across arms.
+- At 6000 steps the mean-squared arms are still descending, so this is a
+  comparison at equal budget rather than at convergence.
 
 ## Takeaways
 
 - The Student-t residual model of a 2026 ICML paper is a $q$-Gaussian likelihood,
   exactly, at qjax's own $\nu = (3-q)/(q-1)$ — and the mean-squared residual is
   its $q_L\to1$ member, not a separate thing.
-- PINN residuals really are heavy-tailed: $\hat q_L \approx 2.2$–2.3, i.e. $\nu<1$,
+- PINN residuals really are heavy-tailed: $\hat q_L \approx 2.1$–2.4, i.e. $\nu<1$,
   heavier than Cauchy, measured against an exact solution.
-- Because `q_gaussian_logpdf` is differentiable in its index, the EM loop is
-  unnecessary — but removing it is not free, and the resulting learned index
-  disagrees with the fitted one by tens of standard errors.
-- A robust residual loss and a forward PDE are a bad match: robustness means
-  tolerating large residuals, and in a forward problem the residual is the only
-  thing carrying the solution forward.
+- Where the solution is smooth, the deformation earns its keep — 0.67–0.75× the
+  error at 8/8 seeds — and costs one argument, because `q_gaussian_logpdf` is
+  differentiable in its index.
+- At a free boundary the same deformation is 15× worse, because robustness means
+  tolerating large residuals and in a forward problem the residual is the only
+  thing carrying the solution forward. Heavy tails alone do not license a robust
+  loss; the question is whether the tail is noise or signal.
+- Because the index is differentiable, the EM loop is unnecessary — but removing
+  it is not free: the resulting learned index disagrees with the fitted one by
+  tens of standard errors, even in the arm that wins.
 - As with the [$q\leftrightarrow2-q$ duality](../theory.md#the-q-leftrightarrow-2-q-duality),
   the deformation has a *direction* and a domain of validity, and both are
   checkable in advance.

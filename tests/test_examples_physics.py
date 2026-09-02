@@ -460,3 +460,70 @@ def test_loss_index_is_confined_above_one(example):
         assert module.Q_LOSS_MIN <= index <= module.Q_LOSS_MAX
     # And the trap is real: a q < 1 likelihood is -inf outside its support.
     assert bool(jnp.isneginf(qjax.q_gaussian_logpdf(10.0, 0.5, 1.0)))
+
+
+def test_learning_rate_schedule_spans_its_full_range(example):
+    # The training scan runs in blocks, and the schedule is a function of the
+    # *global* step. Fed the within-block index it would sit pinned at LR for the
+    # whole run, which is what this pins against regressing.
+    module = example("pinn_fokker_planck")
+    total = 6000
+    assert float(module.adam_rate(0, total)) == pytest.approx(module.LR)
+    assert float(module.adam_rate(total, total)) == pytest.approx(0.01 * module.LR)
+    assert float(module.adam_rate(total // 2, total)) == pytest.approx(0.505 * module.LR)
+    # Monotone in between, so no block boundary can hand back a larger step.
+    rates = jnp.array([float(module.adam_rate(step, total)) for step in range(0, total, 150)])
+    assert bool(jnp.all(jnp.diff(rates) < 0.0))
+
+
+def test_the_two_boundaries_are_penalized_separately(example):
+    # Penalizing the sum of the two ends -- the natural one-liner -- would let an
+    # error at +L be cancelled by the opposite error at -L for free.
+    module = example("pinn_fokker_planck")
+    q, times = 1.5, jnp.linspace(0.0, module.FINAL_TIME, 7)
+    half_width = module.domain_half_width(q)
+    peak = float(qp.nlfp_density(0.0, 0.0, q, module.DIFFUSIVITY, module.BETA_INITIAL))
+
+    def exact(x, t):
+        return qp.nlfp_density(x, t, q, module.DIFFUSIVITY, module.BETA_INITIAL)
+
+    def antisymmetric(x, t):
+        # Exactly right on average across the two ends, wrong at each of them.
+        return exact(x, t) + 0.1 * peak * jnp.sign(x)
+
+    assert (
+        float(jnp.max(jnp.abs(module.boundary_errors(exact, times, half_width, q, peak)))) < 1e-12
+    )
+    errors = module.boundary_errors(antisymmetric, times, half_width, q, peak)
+    assert errors.shape == (times.shape[0], 2)
+    assert float(jnp.mean(errors**2)) == pytest.approx(0.01, rel=1e-6)
+    # The cancelling form would have scored this perfect.
+    assert float(jnp.mean(jnp.sum(errors, axis=-1) ** 2)) == pytest.approx(0.0, abs=1e-24)
+
+
+def test_only_the_deformed_arms_fit_their_residual_scale(example):
+    # A Gaussian likelihood with a fitted scale is not a mean-squared residual:
+    # as the residual shrinks the fitted beta grows, so the residual term's weight
+    # against the fixed initial and boundary weights drifts. The baseline arm
+    # therefore holds its scale, and this checks the gradient really is blocked.
+    module = example("pinn_fokker_planck")
+    q = 1.5
+    half_width = module.domain_half_width(q)
+    centre, scale = module.output_map(q, half_width)
+    peak = float(qp.nlfp_density(0.0, 0.0, q, module.DIFFUSIVITY, module.BETA_INITIAL))
+    config = module.configuration(quick=True, full=False)
+    points = module.sample_points(jax.random.PRNGKey(0), config, q, half_width)
+    params = module.init_params(jax.random.PRNGKey(1), (8, 8), peak)
+
+    def scale_gradient(q_fixed, learnable, learn_scale):
+        grads = jax.grad(module.total_loss)(
+            params, points, q, q_fixed, learnable, learn_scale, half_width, peak, centre, scale
+        )
+        return float(grads["beta_raw"])
+
+    assert scale_gradient(1.0, False, False) == 0.0
+    assert abs(scale_gradient(1.5, False, True)) > 0.0
+    # Every shipped arm is consistent with that rule.
+    for _, q_fixed, learnable, learn_scale in module.LOSS_ARMS:
+        blocked = scale_gradient(q_fixed if not learnable else 0.0, learnable, learn_scale)
+        assert (blocked == 0.0) is (not learn_scale)

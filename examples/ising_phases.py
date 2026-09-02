@@ -92,9 +92,12 @@ LR = 3e-3
 CONFUSION_METHODS = ((BASELINE, 1.0), ("Tsallis q = 0.4", 0.4))
 
 # The two non-ML physics baselines are read inside the dense part of the
-# temperature grid. Restricting them *helps* them -- a noisy Binder curve crosses
-# many times far from T_c -- so it keeps the comparison conservative rather than
-# flattering to the Tsallis arms.
+# temperature grid. This window contains the exact T_c, so those two estimators
+# are told roughly where to look; it is applied to them and not to the learned
+# estimators because restricting them *helps* them -- a noisy Binder curve
+# crosses many times far from T_c -- which keeps the comparison conservative
+# rather than flattering to the Tsallis arms. The confusion scan and the
+# classifier crossings see the whole grid. Stated in the docs page too.
 CRITICAL_WINDOW = (2.00, 2.62)
 
 # Panel (a) shows one configuration from each phase and one at criticality.

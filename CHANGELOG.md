@@ -17,7 +17,9 @@ top level, so the flat namespace stays the `q`-primitives.
   The scope rule is deliberate: pure, cheap, exactly-testable kernels live here,
   while the long runs, controlled comparisons and figures live in `examples/`.
     - `physics.lattice` — the 2-D Ising Hamiltonian, a checkerboard Metropolis
-      sampler, and **three mutually independent** routes to the exact free energy:
+      sampler, the Wolff single-cluster update (no critical slowing down, and
+      gated against exhaustive enumeration at three temperatures), and **three
+      mutually independent** routes to the exact free energy:
       exhaustive enumeration of all `2**(L*L)` states, the `2**L x 2**L` transfer
       matrix (exact for the finite periodic lattice), and Onsager's
       thermodynamic-limit solution.
@@ -71,14 +73,16 @@ top level, so the flat namespace stays the `q`-primitives.
       `q`-Gaussian likelihood, with their EM weight equal to the score of
       `q_gaussian_logpdf` at qjax's own `nu = (3-q)/(q-1)` to 1e-15, and the
       mean-squared residual as its `q -> 1` member. Confirms their premise more
-      strongly than they state it — PINN residuals fit `q = 2.19 +- 0.03`, i.e.
-      `nu < 1`, heavier-tailed than Cauchy — and then reports a negative result:
-      because `q_gaussian_logpdf` is differentiable in its index the EM loop is
-      unnecessary, but a robust residual loss and a *forward* PDE are a bad
-      match. Robustness means tolerating large residuals, and in a forward
-      problem the residual is the only thing carrying the initial condition
-      inward, so the solution decays into the spurious family every constant
-      density forms.
+      strongly than they state it — residuals measured at held-out collocation
+      points fit `q = 2.11 +- 0.03` and `2.40 +- 0.02`, i.e. `nu < 1`,
+      heavier-tailed than Cauchy — and then splits on regime: where the solution
+      is smooth the deformed likelihood cuts the error to 0.67-0.75x the
+      mean-squared arm at 8 of 8 seeds, and at a free boundary it is 15x worse at
+      0 of 8, because robustness means tolerating large residuals and in a
+      *forward* problem the residual is the only thing carrying the initial
+      condition inward — so the solution decays into the spurious family every
+      constant density forms. Heavy tails alone do not license a robust loss; the
+      question is whether the tail is noise or signal.
 
 - Tests: `tests/test_physics_{lattice,observables,spinglass,clusters,annealing,diffusion}.py`,
   `tests/test_nn_autoregressive.py`, and `tests/test_examples_physics.py`. The last
