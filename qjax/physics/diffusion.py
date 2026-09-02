@@ -115,6 +115,23 @@ def nlfp_scaling_beta(
     return jnp.asarray(beta_initial, dtype=jnp.result_type(float)) * scale ** (-nlfp_exponent(q))
 
 
+def _check_index(q: Scalar) -> None:
+    """Reject a *statically known* index at or above `NLFP_MAX_INDEX`.
+
+    A traced ``q`` cannot be checked at trace time, so this is deliberately a
+    no-op there rather than a spurious error inside ``jit``.
+    """
+    try:
+        static = float(jnp.asarray(q, dtype=jnp.result_type(float)))
+    except (TypeError, jax.errors.ConcretizationTypeError, jax.errors.TracerArrayConversionError):
+        return
+    if static >= NLFP_MAX_INDEX:
+        raise ValueError(
+            f"the porous-medium exponent 2 - q must be positive, so q < "
+            f"{NLFP_MAX_INDEX}; got {static}."
+        )
+
+
 def nlfp_rate(q: Scalar, diffusivity: Scalar) -> jax.Array:
     r"""Rate constant $K$ of the width ODE $\dot\beta = -K\,\beta^{(5-q)/2}$.
 
@@ -142,17 +159,8 @@ def nlfp_rate(q: Scalar, diffusivity: Scalar) -> jax.Array:
             `NLFP_MAX_INDEX`, where the equation is no longer of
             porous-medium type.
     """
+    _check_index(q)
     q = jnp.asarray(q, dtype=jnp.result_type(float))
-    try:
-        static = float(q)
-    except (TypeError, jax.errors.ConcretizationTypeError, jax.errors.TracerArrayConversionError):
-        pass
-    else:
-        if static >= NLFP_MAX_INDEX:
-            raise ValueError(
-                f"the porous-medium exponent 2 - q must be positive, so q < "
-                f"{NLFP_MAX_INDEX}; got {static}."
-            )
     diffusivity = jnp.asarray(diffusivity, dtype=jnp.result_type(float))
     return 4.0 * diffusivity * (2.0 - q) / normalization(q) ** (1.0 - q)
 
@@ -320,7 +328,11 @@ def nlfp_residual(
 
     Returns:
         The scalar residual. Zero for an exact solution.
+
+    Raises:
+        ValueError: If ``q`` is a concrete value at or above `NLFP_MAX_INDEX`.
     """
+    _check_index(q)
     x = jnp.asarray(x, dtype=jnp.result_type(float))
     time = jnp.asarray(time, dtype=jnp.result_type(float))
     exponent = 2.0 - jnp.asarray(q, dtype=jnp.result_type(float))
@@ -401,7 +413,7 @@ def mean_squared_displacement(snapshots: Array, origin: Array | None = None) -> 
     Args:
         snapshots: Positions of shape ``(T, P)`` for one dimension or
             ``(T, P, D)`` for ``D`` dimensions, where ``P`` is the number of
-            independent walkers.
+            independent walkers. A single walker may be passed as ``(T,)``.
         origin: Starting positions, shape matching one snapshot. Defaults to
             ``snapshots[0]``.
 
@@ -409,6 +421,8 @@ def mean_squared_displacement(snapshots: Array, origin: Array | None = None) -> 
         The mean-squared displacement at each snapshot time, shape ``(T,)``.
     """
     snapshots = jnp.asarray(snapshots, dtype=jnp.result_type(float))
+    if snapshots.ndim == 1:
+        snapshots = snapshots[:, None]
     start = snapshots[0] if origin is None else jnp.asarray(origin, dtype=snapshots.dtype)
     offsets = snapshots - start
     squared = offsets**2 if snapshots.ndim == 2 else jnp.sum(offsets**2, axis=-1)
@@ -479,24 +493,28 @@ def histogram_density(samples: Array, edges: Array) -> jax.Array:
 def interpolate_density(x: Array, edges: Array, density: Array) -> jax.Array:
     """Evaluate a binned density at arbitrary points by linear interpolation.
 
+    Interpolation is on bin *centres*, so the two outer half-bins have no
+    bracketing centre: there the value is held flat at the end bin rather than
+    faded to zero, which would report an empty edge for a bin that is not empty.
+    Outside ``edges`` the density is zero.
+
     Args:
         x: Points at which to evaluate, any shape.
         edges: Bin edges the density was built on, shape ``(B + 1,)``.
         density: Density per bin, shape ``(B,)``.
 
     Returns:
-        Interpolated density, same shape as ``x``, clamped to ``0`` outside the
-        binned range.
+        Interpolated density, same shape as ``x``; exactly ``0`` outside
+        ``[edges[0], edges[-1]]``.
     """
     edges = jnp.asarray(edges, dtype=jnp.result_type(float))
+    density = jnp.asarray(density, dtype=jnp.result_type(float))
     centres = 0.5 * (edges[:-1] + edges[1:])
-    return jnp.interp(
-        jnp.asarray(x, dtype=jnp.result_type(float)),
-        centres,
-        jnp.asarray(density, dtype=jnp.result_type(float)),
-        left=0.0,
-        right=0.0,
-    )
+    x = jnp.asarray(x, dtype=jnp.result_type(float))
+    # ``left``/``right`` hold the end bins flat across their outer half.
+    inside = (x >= edges[0]) & (x <= edges[-1])
+    interpolated = jnp.interp(x, centres, density, left=density[0], right=density[-1])
+    return jnp.where(inside, interpolated, 0.0)
 
 
 __all__ = [

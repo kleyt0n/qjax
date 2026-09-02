@@ -361,3 +361,32 @@ def test_nlfp_helpers_are_jittable_and_differentiable_in_q():
     gradient = jax.grad(lambda q: D.nlfp_width(0.5, q, DIFFUSIVITY, BETA_INITIAL))(0.7)
     assert jnp.isfinite(gradient)
     assert float(jnp.abs(gradient)) > 0.0
+
+
+def test_interpolated_density_holds_the_end_bins_across_their_outer_half():
+    # Interpolation is on bin centres, so the outer half-bins have no bracketing
+    # centre. Fading them to zero would report an empty edge for a bin that is
+    # not empty; outside the edges the density really is zero.
+    edges = jnp.linspace(-1.0, 1.0, 5)
+    density = jnp.array([0.25, 0.75, 0.75, 0.25])
+    assert float(D.interpolate_density(-0.9, edges, density)) == pytest.approx(0.25)
+    assert float(D.interpolate_density(0.9, edges, density)) == pytest.approx(0.25)
+    assert float(D.interpolate_density(-1.01, edges, density)) == 0.0
+    assert float(D.interpolate_density(1.01, edges, density)) == 0.0
+    # The interior is still linearly interpolated between centres.
+    assert float(D.interpolate_density(-0.5, edges, density)) == pytest.approx(0.5)
+
+
+def test_mean_squared_displacement_accepts_a_single_walker():
+    walk = jnp.array([0.0, 1.0, 3.0])
+    assert jnp.allclose(D.mean_squared_displacement(walk), jnp.array([0.0, 1.0, 9.0]))
+
+
+def test_residual_rejects_a_static_index_at_or_above_two():
+    # Every other entry point to the closed-form solution refuses q >= 2, where
+    # the porous-medium exponent 2 - q stops being positive; so does this one.
+    with pytest.raises(ValueError, match="2 - q"):
+        D.nlfp_residual(lambda x, t: x + t, 0.1, 0.1, 2.0, 1.0)
+    # A traced index cannot be checked at trace time, and must not raise.
+    residual = jax.jit(lambda q: D.nlfp_residual(lambda x, t: x + t, 0.1, 0.1, q, 1.0))(1.5)
+    assert bool(jnp.isfinite(residual))

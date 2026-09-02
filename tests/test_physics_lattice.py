@@ -217,3 +217,70 @@ def test_finite_size_scaling_recovers_the_exact_critical_temperature():
         crossings.append(O.crossing_temperature(temperatures, cumulant - reference, 0.0))
     estimate, _, _ = O.finite_size_extrapolation(jnp.array(sizes[1:]), jnp.array(crossings))
     assert float(abs(estimate - ISING_TC)) < 0.15
+
+
+# --------------------------------------------------------------------------- #
+# The Wolff cluster update
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("temperature", [1.8, ISING_TC, 3.0])
+def test_wolff_samples_match_exhaustive_enumeration(temperature):
+    # The gate on the cluster update: at L = 4 the exact thermodynamics is
+    # enumerable, so a wrong bond probability (or a cluster grown with the wrong
+    # randomness) shows up as a disagreement rather than a plausible curve.
+    exact = L.ising_exact_observables(4, temperature)
+    configurations = L.sample_ising(
+        jax.random.PRNGKey(0), 4, jnp.array([temperature]), 4000, 60, algorithm="wolff"
+    )
+    energy = L.ising_energy(configurations) / 16.0
+    absolute = jnp.abs(L.ising_magnetization(configurations))
+    for measured, reference in ((energy, "energy_per_site"), (absolute, "abs_magnetization")):
+        error = float(jnp.std(measured)) / math.sqrt(measured.size)
+        assert float(jnp.mean(measured)) == pytest.approx(
+            float(exact[reference]), abs=4.0 * error + 1e-3
+        )
+
+
+def test_wolff_flips_a_cluster_of_aligned_spins():
+    # Every spin stays in {-1, +1}, the flipped set is non-empty, and it contains
+    # only spins that were aligned with the seed.
+    spins = jnp.where(jax.random.bernoulli(jax.random.PRNGKey(1), 0.5, (8, 8)), 1.0, -1.0)
+    updated = L.wolff_update(jax.random.PRNGKey(2), spins, 1.0 / ISING_TC)
+    assert set(jnp.unique(updated).tolist()) <= {-1.0, 1.0}
+    flipped = updated != spins
+    assert bool(jnp.any(flipped))
+    assert len(set(spins[flipped].tolist())) == 1
+
+
+def test_wolff_cluster_grows_with_falling_temperature():
+    # p_add = 1 - exp(-2 beta J): at high temperature the cluster is essentially
+    # the seed alone, at low temperature it is the whole aligned domain.
+    spins = jnp.ones((8, 8))
+    hot = L.wolff_update(jax.random.PRNGKey(3), spins, 1.0 / 100.0)
+    cold = L.wolff_update(jax.random.PRNGKey(3), spins, 1.0 / 0.2)
+    assert int(jnp.sum(hot != spins)) <= 3
+    assert int(jnp.sum(cold != spins)) == 64
+
+
+def test_sample_ising_rejects_an_unknown_algorithm():
+    with pytest.raises(ValueError, match="metropolis"):
+        L.sample_ising(jax.random.PRNGKey(0), 4, jnp.array([2.0]), 2, 2, algorithm="glauber")
+
+
+@pytest.mark.parametrize("algorithm,budget", [("metropolis", 1200), ("wolff", 120)])
+def test_samplers_reach_the_transfer_matrix_energy(algorithm, budget):
+    # A sharper gate than enumeration allows: the transfer matrix is exact for the
+    # *finite* periodic L = 8 lattice, which is well past the 2**(L*L) wall. Also
+    # the check that the shipped equilibration budgets are actually long enough --
+    # u(T_c) is the observable a hot, unrelaxed chain gets wrong.
+    beta = 1.0 / ISING_TC
+    step = 1e-4
+    log_z = [float(L.ising_transfer_matrix_log_z(8, 1.0 / (beta + s))) for s in (step, -step)]
+    exact = -(log_z[0] - log_z[1]) / (2.0 * step) / 64.0
+    assert exact == pytest.approx(ISING_ENERGY_AT_TC, abs=0.1)
+
+    configurations = L.sample_ising(
+        jax.random.PRNGKey(4), 8, jnp.array([ISING_TC]), 400, budget, algorithm=algorithm
+    )
+    energy = L.ising_energy(configurations) / 64.0
+    error = float(jnp.std(energy)) / math.sqrt(energy.size)
+    assert float(jnp.mean(energy)) == pytest.approx(exact, abs=4.0 * error)

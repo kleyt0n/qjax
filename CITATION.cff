@@ -9,13 +9,17 @@ authors:
 repository-code: "https://github.com/Kleyt0n/qjax"
 url: "https://kleyt0n.github.io/qjax/"
 license: MIT
-version: 0.1.2
+version: 0.2.0
 keywords:
   - Tsallis statistics
   - non-extensive entropy
   - JAX
   - machine learning
   - entmax
+  - statistical mechanics
+  - Ising model
+  - spin glass
+  - anomalous diffusion
 references:
   - type: book
     authors:
@@ -51,3 +55,88 @@ references:
     journal: "IEEE Transactions on Information Theory"
     year: 2007
     doi: "10.1109/TIT.2007.907077"
+  - type: software
+    authors:
+      - family-names: "Bradbury"
+        given-names: "James"
+      - family-names: "Frostig"
+        given-names: "Roy"
+      - family-names: "Hawkins"
+        given-names: "Peter"
+      - family-names: "Johnson"
+        given-names: "Matthew James"
+      - family-names: "Leary"
+        given-names: "Chris"
+      - family-names: "Maclaurin"
+        given-names: "Dougal"
+      - family-names: "Necula"
+        given-names: "George"
+      - family-names: "Paszke"
+        given-names: "Adam"
+      - family-names: "VanderPlas"
+        given-names: "Jake"
+      - family-names: "Wanderman-Milne"
+        given-names: "Skye"
+      - family-names: "Zhang"
+        given-names: "Qiao"
+    title: "JAX: composable transformations of Python+NumPy programs"
+    year: 2018
+    url: "https://github.com/jax-ml/jax"
+  - type: article
+    authors:
+      - family-names: "Onsager"
+        given-names: "Lars"
+    title: "Crystal Statistics I: A Two-Dimensional Model with an Order-Disorder Transition"
+    journal: "Physical Review"
+    year: 1944
+    doi: "10.1103/PhysRev.65.117"
+  - type: article
+    authors:
+      - family-names: "Tsallis"
+        given-names: "Constantino"
+      - family-names: "Stariolo"
+        given-names: "Daniel A."
+    title: "Generalized Simulated Annealing"
+    journal: "Physica A"
+    year: 1996
+    doi: "10.1016/S0378-4371(96)00271-3"
+  - type: article
+    authors:
+      - family-names: "Tsallis"
+        given-names: "Constantino"
+      - family-names: "Bukman"
+        given-names: "David J."
+    title: "Anomalous Diffusion in the Presence of External Forces"
+    journal: "Physical Review E"
+    year: 1996
+    doi: "10.1103/PhysRevE.54.R2197"
+  - type: article
+    authors:
+      - family-names: "Wu"
+        given-names: "Dian"
+      - family-names: "Wang"
+        given-names: "Lei"
+      - family-names: "Zhang"
+        given-names: "Pan"
+    title: "Solving Statistical Mechanics Using Variational Autoregressive Networks"
+    journal: "Physical Review Letters"
+    year: 2019
+    doi: "10.1103/PhysRevLett.122.080602"
+  - type: article
+    authors:
+      - family-names: "Carrasquilla"
+        given-names: "Juan"
+      - family-names: "Melko"
+        given-names: "Roger G."
+    title: "Machine Learning Phases of Matter"
+    journal: "Nature Physics"
+    year: 2017
+    doi: "10.1038/nphys4035"
+  - type: article
+    authors:
+      - family-names: "Lutz"
+        given-names: "Eric"
+    title: "Anomalous Diffusion and Tsallis Statistics in an Optical Lattice"
+    journal: "Physical Review A"
+    year: 2003
+    doi: "10.1103/PhysRevA.67.051402"

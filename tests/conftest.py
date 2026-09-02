@@ -33,3 +33,36 @@ def float32_mode():
         yield
     finally:
         jax.config.update("jax_enable_x64", previous)
+
+
+def _load_example(name):
+    """Import an example script by path, without executing its ``main``."""
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent.parent / "examples" / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(f"_example_{name}", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture(scope="session")
+def example():
+    """Load an example module by name, memoized for the session.
+
+    The five statistical-physics examples carry claims that are worth gating in
+    CI -- most of all the ``q``-deformed free-energy gradient, whose whole point
+    is that autodiff reproduces the analytic REINFORCE estimator. The library
+    kernels they use are tested directly in ``tests/test_physics_*.py``; this
+    fixture is for the parts that live in the scripts.
+    """
+    cache: dict = {}
+
+    def load(name):
+        if name not in cache:
+            cache[name] = _load_example(name)
+        return cache[name]
+
+    return load

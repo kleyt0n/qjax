@@ -72,7 +72,7 @@ The definitions `qjax` implements and their $q \to 1$ limits.
 
 <div class="site-card" markdown>
 ### [Examples](examples.md)
-Eight runnable scripts — five of them learn `q` by gradient descent.
+Thirteen runnable scripts — five of them statistical physics, each checked against an exact reference value.
 </div>
 
 <div class="site-card" markdown>
@@ -117,6 +117,10 @@ $q$-Gaussian normalization, and $\Delta$ the probability simplex. At $q = 2$,
   and `jit`/`vmap` behaviour of every primitive.
 - **Publication-grade plots.** A brand-ramp Matplotlib style and helpers that
   export vector PDFs.
+- **Physics with exact references.** `qjax.physics` pairs the primitives with the
+  systems they describe — the 2-D Ising model, the Sherrington–Kirkpatrick spin
+  glass, Lennard-Jones clusters, anomalous diffusion — each with a closed form, an
+  exhaustive enumeration, or a published value to be checked against.
 
 !!! note "Research library"
     `qjax` is a research project. The numerics are well tested, but the API may

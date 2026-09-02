@@ -166,12 +166,19 @@ nav:
       - Theory: theory.md
   - Examples:
       - Overview: examples.md
-      - The q-Gaussian family: examples/q_gaussian.md
-      - Fitting q by maximum likelihood: examples/learnable_q.md
-      - Derivative-free optimization: examples/optimization.md
-      - Label-noise robustness: examples/classification.md
-      - Node classification under noise: examples/node_classification.md
-      - Exploration on a bandit: examples/reinforcement_learning.md
-      - Sparse self-attention: examples/attention_mlp.md
-      - Learning q in attention: examples/attention_q_learning.md
+      - Statistical physics:
+          - Ising phases and Tc: examples/ising_phases.md
+          - Variational free energy at index q: examples/tsallis_free_energy.md
+          - Generalized simulated annealing: examples/generalized_annealing.md
+          - Anomalous diffusion: examples/anomalous_diffusion.md
+          - Heavy-tailed PINN residuals: examples/pinn_fokker_planck.md
+      - Machine learning:
+          - The q-Gaussian family: examples/q_gaussian.md
+          - Fitting q by maximum likelihood: examples/learnable_q.md
+          - Derivative-free optimization: examples/optimization.md
+          - Label-noise robustness: examples/classification.md
+          - Node classification under noise: examples/node_classification.md
+          - Exploration on a bandit: examples/reinforcement_learning.md
+          - Sparse self-attention: examples/attention_mlp.md
+          - Learning q in attention: examples/attention_q_learning.md
   - API reference: api.md

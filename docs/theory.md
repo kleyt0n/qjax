@@ -55,6 +55,30 @@ $$
 and the **cross-entropy** used as a classification loss is
 $H_q(y, p) = -\sum_i y_i \ln_q p_i$.
 
+### The $q \leftrightarrow 2-q$ duality
+
+One identity is worth stating on its own, because it is easy to get backwards and
+it inverts conclusions when you do. The Tsallis entropy is the average of
+$-\ln_q p$ under the **escort** weight $p^q$, not under $p$ itself. Averaging
+against $p$ instead gives the *dual* index:
+
+$$
+-\sum_i p_i \ln_q p_i = \frac{1 - \sum_i p_i^{\,2-q}}{1-q} = S_{2-q}(p).
+$$
+
+So an objective built by substituting $\ln \to \ln_q$ inside an ordinary
+expectation — the natural move when deforming a variational free energy, an
+evidence lower bound, or an entropy regularizer — carries entropic index
+$2-q$, not $q$. Concretely, $q < 1$ then supplies *less* entropy than
+Boltzmann–Gibbs and $q > 1$ supplies more, which is the opposite of what
+$S_q$ alone suggests.
+
+`qjax` implements both forms and does not pick for you: `tsallis_entropy` is
+$S_q$, while `q_log` inside your own expectation gives $S_{2-q}$. The
+[variational free energy example](examples/tsallis_free_energy.md) works through
+the consequences, and the identity is checked to machine precision in the test
+suite.
+
 ## 3. The q-Gaussian
 
 Maximizing $S_q$ under a fixed second moment yields the **q-Gaussian**:
