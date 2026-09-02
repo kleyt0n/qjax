@@ -52,7 +52,7 @@ def _load_example(name):
 def example():
     """Load an example module by name, memoized for the session.
 
-    The four statistical-physics examples carry claims that are worth gating in
+    The five statistical-physics examples carry claims that are worth gating in
     CI -- most of all the ``q``-deformed free-energy gradient, whose whole point
     is that autodiff reproduces the analytic REINFORCE estimator. The library
     kernels they use are tested directly in ``tests/test_physics_*.py``; this

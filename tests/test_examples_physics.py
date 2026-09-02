@@ -5,7 +5,7 @@ import pytest
 
 import qjax
 import qjax.physics as qp
-from qjax.nn import made_init, made_log_prob, made_masks, made_sample
+from qjax.nn import bounded_q, made_init, made_log_prob, made_masks, made_sample
 
 jax.config.update("jax_enable_x64", True)
 
@@ -14,6 +14,7 @@ EXAMPLES = (
     "tsallis_free_energy",
     "generalized_annealing",
     "anomalous_diffusion",
+    "pinn_fokker_planck",
 )
 
 
@@ -304,7 +305,7 @@ def test_brownian_control_is_normal_diffusion(example):
 @pytest.mark.parametrize("name", EXAMPLES)
 def test_scripts_run_in_quick_mode(name, example, tmp_path, monkeypatch):
     # The CI `examples` job runs only a couple of the original scripts, so
-    # without this the four statistical-physics ones would never execute in CI.
+    # without this the five statistical-physics ones would never execute in CI.
     import matplotlib
 
     matplotlib.use("Agg")
@@ -314,3 +315,148 @@ def test_scripts_run_in_quick_mode(name, example, tmp_path, monkeypatch):
     written = sorted(tmp_path.glob("*.pdf"))
     assert written, f"{name} wrote no figure"
     assert all(path.stat().st_size > 1000 for path in written)
+
+
+# --------------------------------------------------------------------------- #
+# The physics-informed neural network
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("q_loss", [1.2, 1.5, 2.0, 2.5])
+def test_student_t_em_score_is_the_q_gaussian_score(q_loss, example):
+    # The load-bearing claim of the whole example: the Student-t residual model of
+    # Abijuru et al. (ICML 2026) *is* a q-Gaussian likelihood, at qjax's own
+    # nu = (3-q)/(q-1) -- the same relation `qjax.sample` uses to draw q-Gaussian
+    # variates. If this ever stopped holding, the example would be a claim about a
+    # different method.
+    module = example("pinn_fokker_planck")
+    residual = jnp.linspace(-6.0, 6.0, 241)
+    beta = 1.0
+
+    ours = jax.vmap(jax.grad(lambda r, q=q_loss: -qjax.q_gaussian_logpdf(r, q, beta)))(residual)
+    degrees, scale = module.matched_student_t(q_loss, beta)
+    theirs = module.student_t_weight(residual, degrees, scale) * residual / scale**2
+
+    assert float(degrees) == pytest.approx((3.0 - q_loss) / (q_loss - 1.0), rel=1e-12)
+    assert float(jnp.max(jnp.abs(ours - theirs))) < 1e-12
+    # And it is not vacuous: the score is genuinely non-trivial.
+    assert float(jnp.max(jnp.abs(ours))) > 0.1
+
+
+def test_deformed_loss_is_a_weighted_mean_squared_residual(example):
+    # The deformed objective is a weighted MSE whose weights fall off with the
+    # residual -- which is precisely the M-step of the EM algorithm.
+    module = example("pinn_fokker_planck")
+    residual = jnp.linspace(-6.0, 6.0, 241)
+    beta = 0.7
+
+    for q_loss in (1.0, 1.3, 1.9):
+        score = jax.vmap(jax.grad(lambda r, q=q_loss: -qjax.q_gaussian_logpdf(r, q, beta)))(
+            residual
+        )
+        weight = module.influence_weight(residual, q_loss, beta)
+        assert jnp.allclose(score, weight * 2.0 * beta * residual, atol=1e-12)
+
+    # q_loss = 1 is the mean-squared residual exactly: no reweighting at all.
+    assert jnp.allclose(module.influence_weight(residual, 1.0, beta), 1.0, atol=0.0, rtol=0.0)
+    # Above 1 the weight is a bounded, strictly decreasing function of |r| --
+    # the definition of bounded influence, and the reason it is called robust.
+    heavy = module.influence_weight(jnp.abs(residual), 1.8, beta)
+    order = jnp.argsort(jnp.abs(residual))
+    sorted_weight = heavy[order]
+    assert bool(jnp.all(jnp.diff(sorted_weight) <= 1e-12))
+    assert float(jnp.max(heavy)) <= 1.0
+
+
+def test_fit_index_recovers_a_planted_tail(example):
+    # The independent measurement the learned index is checked against.
+    module = example("pinn_fokker_planck")
+    for planted in (1.3, 1.6, 2.0):
+        samples = qjax.sample(jax.random.PRNGKey(0), q=planted, beta=1.5, shape=(60_000,))
+        q_hat, _, sigma = module.fit_index(samples, 3000)
+        assert float(sigma) > 0.0
+        assert abs(float(q_hat) - planted) < 4.0 * float(sigma) + 0.03
+
+    # Gaussian samples sit against the q = 1 bound, so the fit reports "not
+    # heavy-tailed" rather than inventing a tail.
+    gaussian = jax.random.normal(jax.random.PRNGKey(1), (60_000,))
+    q_hat, _, _ = module.fit_index(gaussian, 3000)
+    assert float(q_hat) == pytest.approx(module.Q_LOSS_MIN, abs=0.05)
+
+
+def test_every_constant_density_solves_the_equation(example):
+    # The spurious family the collapse falls into, and the reason mass is a
+    # held-out diagnostic: for a constant c both dc/dt and d^2 c^m/dx^2 vanish, so
+    # the residual cannot tell a constant from the true solution.
+    module = example("pinn_fokker_planck")
+    for q in (0.5, 1.0, 1.5):
+        for value in (0.0, 0.05, 1.0, 7.0):
+            residual = jax.vmap(
+                lambda x, value=value, q=q: qp.nlfp_residual(
+                    lambda y, t: value + 0.0 * y + 0.0 * t, x, 0.4, q, module.DIFFUSIVITY
+                )
+            )(jnp.linspace(-2.0, 2.0, 21))
+            assert float(jnp.max(jnp.abs(residual))) < 1e-12
+
+
+def test_network_residual_matches_a_finite_difference(example):
+    # The PINN plumbing: the autodiff residual of an arbitrary callable has to be
+    # the thing the equation says it is.
+    module = example("pinn_fokker_planck")
+    q = 1.2
+
+    def smooth(x, t):
+        return 0.4 * jnp.exp(-((x / (1.0 + t)) ** 2)) + 0.05
+
+    step = 1e-4
+    for x in (-1.3, 0.0, 0.8, 2.5):
+        for t in (0.1, 0.6):
+            automatic = float(qp.nlfp_residual(smooth, x, t, q, module.DIFFUSIVITY))
+            rate = (smooth(x, t + step) - smooth(x, t - step)) / (2.0 * step)
+            pressure = [smooth(x + d * step, t) ** (2.0 - q) for d in (-1, 0, 1)]
+            curvature = (pressure[0] - 2.0 * pressure[1] + pressure[2]) / step**2
+            assert automatic == pytest.approx(
+                float(rate - module.DIFFUSIVITY * curvature), rel=1e-4, abs=1e-6
+            )
+
+
+def test_domain_rule_contains_the_front_and_the_mass(example):
+    module = example("pinn_fokker_planck")
+    for q in module.INDICES:
+        half_width = module.domain_half_width(q)
+        front = float(qp.nlfp_front(module.FINAL_TIME, q, module.DIFFUSIVITY, module.BETA_INITIAL))
+        if np.isfinite(front):
+            assert front < half_width
+        grid = jnp.linspace(-half_width, half_width, 40_001)
+        inside = float(
+            jnp.trapezoid(
+                qp.nlfp_density(
+                    grid, module.FINAL_TIME, q, module.DIFFUSIVITY, module.BETA_INITIAL
+                ),
+                grid,
+            )
+        )
+        assert 1.0 - inside <= 2.1e-3
+
+
+def test_truncated_mass_is_not_one_for_a_heavy_tail(example):
+    # Charging the network against 1.0 on a truncated domain would bill it for the
+    # domain rather than for its own error.
+    module = example("pinn_fokker_planck")
+    times = jnp.linspace(0.0, module.FINAL_TIME, 5)
+    compact = module.truncated_mass(0.5, module.domain_half_width(0.5), times)
+    heavy = module.truncated_mass(1.5, module.domain_half_width(1.5), times)
+    assert bool(jnp.all(jnp.abs(compact - 1.0) < 1e-6))
+    assert float(jnp.max(1.0 - heavy)) > 1e-4
+    assert bool(jnp.all(heavy < 1.0))
+
+
+def test_loss_index_is_confined_above_one(example):
+    # Below q = 1 the q-Gaussian has compact support, so the likelihood is -inf
+    # for any residual past the cut-off: an infinitely *un*-robust loss, and the
+    # opposite of the intended direction.
+    module = example("pinn_fokker_planck")
+    assert module.Q_LOSS_MIN == 1.0
+    for raw in (-40.0, 0.0, 40.0):
+        index = float(bounded_q(raw, module.Q_LOSS_MIN, module.Q_LOSS_MAX))
+        assert module.Q_LOSS_MIN <= index <= module.Q_LOSS_MAX
+    # And the trap is real: a q < 1 likelihood is -inf outside its support.
+    assert bool(jnp.isneginf(qjax.q_gaussian_logpdf(10.0, 0.5, 1.0)))
