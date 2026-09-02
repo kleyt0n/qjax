@@ -53,6 +53,46 @@ without adding a dependency on any of them.
     options:
       heading_level: 3
 
+::: qjax.nn.autoregressive
+    options:
+      heading_level: 3
+
+## Physics — systems with exact reference values
+
+`qjax.physics` is not re-exported at the top level: import it explicitly
+(`import qjax.physics as qp`) so the flat `qjax.*` namespace stays the
+`q`-primitives. Its scope rule is deliberate — pure, cheap, exactly-testable
+kernels live here; the long runs, controlled comparisons and figures live in
+`examples/`.
+
+::: qjax.physics.reference
+    options:
+      heading_level: 3
+
+::: qjax.physics.lattice
+    options:
+      heading_level: 3
+
+::: qjax.physics.observables
+    options:
+      heading_level: 3
+
+::: qjax.physics.spinglass
+    options:
+      heading_level: 3
+
+::: qjax.physics.clusters
+    options:
+      heading_level: 3
+
+::: qjax.physics.annealing
+    options:
+      heading_level: 3
+
+::: qjax.physics.diffusion
+    options:
+      heading_level: 3
+
 ## Shared — types, validation, and series
 
 ::: qjax.shared.types
