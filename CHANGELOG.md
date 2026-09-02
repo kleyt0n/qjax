@@ -4,6 +4,99 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-09-02
+
+Adds `qjax.physics`, a small set of statistical-mechanics systems paired with
+exact reference values, plus five physics examples built on them. The existing
+`qjax.*` surface is unchanged; nothing from `qjax.physics` is re-exported at the
+top level, so the flat namespace stays the `q`-primitives.
+
+### Added
+
+- **`qjax.physics`** — physical systems with something exact to check against.
+  The scope rule is deliberate: pure, cheap, exactly-testable kernels live here,
+  while the long runs, controlled comparisons and figures live in `examples/`.
+    - `physics.lattice` — the 2-D Ising Hamiltonian, a checkerboard Metropolis
+      sampler, and **three mutually independent** routes to the exact free energy:
+      exhaustive enumeration of all `2**(L*L)` states, the `2**L x 2**L` transfer
+      matrix (exact for the finite periodic lattice), and Onsager's
+      thermodynamic-limit solution.
+    - `physics.spinglass` — the Sherrington-Kirkpatrick model with streamed exact
+      thermodynamics, including the exact `<s_i s_j>`, up to `N = 22`.
+    - `physics.clusters` — the Lennard-Jones potential with a soft spherical wall,
+      an Adam quench, and geometry helpers. The `n <= 4` minima are closed forms.
+    - `physics.annealing` — the Tsallis-Stariolo cooling schedule. Written as a
+      *ratio of two `qjax.q_log` calls*, so its `q -> 1` limit is the Geman-Geman
+      logarithmic schedule to zero error, with no branch on `q` and a correct
+      non-zero derivative in `q`.
+    - `physics.diffusion` — the anomalous-diffusion scaling relations
+      (`alpha = 2/(3-q)` and its inverse), the exact Sisyphus-Langevin stationary
+      `(q, beta)`, Lutz's cold-atom law, and scan-friendly density estimators.
+      Also the **closed-form solution of the nonlinear Fokker-Planck equation**
+      (`nlfp_rate`, `nlfp_offset`, `nlfp_width`, `nlfp_density`, `nlfp_front`)
+      derived from `beta_dot = -K beta^{(5-q)/2}` with
+      `K = 4 D (2-q) / C_q^{1-q}`, which reduces to the heat kernel exactly at
+      `q = 1`; and `nlfp_residual`, a differential operator taking any
+      `(x, t) -> p` callable, so one function both validates the exact solution
+      (its residual vanishes at 1e-15, which is what gates the derivation) and
+      trains a network.
+    - `physics.observables` — Binder cumulant, level crossings, peak location,
+      FWHM, and finite-size extrapolation.
+    - `physics.reference` — the exact and published constants, each with its
+      citation: `ISING_TC`, `ISING_BETA_EXP`, `ISING_NU`, `ISING_ENERGY_AT_TC`,
+      `SK_PARISI_GROUND_STATE`, `LJ_REFERENCE_MINIMA`, `LJ38_ICOSAHEDRAL`.
+- **`qjax.nn.autoregressive`** — a masked autoregressive network (MADE) over
+  binary spins: exactly normalized, exactly autoregressive, sampled in `N`
+  sequential passes and evaluated in one. Needed by any variational method in
+  statistical mechanics; nothing about it is `q`-deformed, hence `qjax.nn`.
+- **Five statistical-physics examples**, each reporting a validation table against
+  exact values, and each with `--full` (or `QJAX_FULL=1`) for a larger run:
+    - `examples/ising_phases.py` — machine learning the Ising transition, where
+      finite-size crossover generates *physical* label noise. Recovers `T_c` to
+      0.6 % and `nu`, `beta` to 3 %.
+    - `examples/tsallis_free_energy.py` — the nonextensive variational free
+      energy. Records the `q <-> 2-q` duality (`-E_p[ln_q p] = S_{2-q}`), that
+      `q = 1` is necessarily optimal because it is the only bound, and that the
+      deformation's effect collapses in `(q-1)N`.
+    - `examples/generalized_annealing.py` — generalized simulated annealing on
+      Lennard-Jones clusters. Reports a negative result with a mechanism: the
+      deformation does not pay, and the tail index `nu = (3-q_V)/(q_V-1)` is why.
+    - `examples/anomalous_diffusion.py` — `q` as a *measured* quantity, with a
+      Fisher error bar and two independent estimators. All three cold-atom arms
+      land within one sigma of the exact stationary index.
+    - `examples/pinn_fokker_planck.py` — the first PDE-residual code in the
+      repository, and the first to differentiate a `qjax` primitive twice in
+      space. Reads the Student-t residual model of Abijuru et al. (ICML 2026,
+      *Heavy-tailed Physics-Informed Neural Networks*) as what it is: a
+      `q`-Gaussian likelihood, with their EM weight equal to the score of
+      `q_gaussian_logpdf` at qjax's own `nu = (3-q)/(q-1)` to 1e-15, and the
+      mean-squared residual as its `q -> 1` member. Confirms their premise more
+      strongly than they state it — PINN residuals fit `q = 2.19 +- 0.03`, i.e.
+      `nu < 1`, heavier-tailed than Cauchy — and then reports a negative result:
+      because `q_gaussian_logpdf` is differentiable in its index the EM loop is
+      unnecessary, but a robust residual loss and a *forward* PDE are a bad
+      match. Robustness means tolerating large residuals, and in a forward
+      problem the residual is the only thing carrying the initial condition
+      inward, so the solution decays into the spurious family every constant
+      density forms.
+
+- Tests: `tests/test_physics_{lattice,observables,spinglass,clusters,annealing,diffusion}.py`,
+  `tests/test_nn_autoregressive.py`, and `tests/test_examples_physics.py`. The last
+  gates the claims that live in the scripts — most of all that autodiff through
+  `free_energy_surrogate` reproduces the analytic REINFORCE estimator — and runs
+  every physics example end to end in a reduced mode, which the CI `examples` job
+  did not previously do for any of the heavier scripts.
+
+### Notes
+
+- `qjax.sample` can return `+inf` for `q` near 3 in float32: the Student-`t`
+  representation divides by a `chi2_nu` variate, and for `nu ~ 0.2` a shape-0.09
+  gamma draw underflows to exactly zero about once in 2000 draws. The value is a
+  finite-precision artifact rather than a genuine sample. Library behaviour is
+  unchanged; `examples/generalized_annealing.py` documents and handles it.
+- Documentation gains four example pages, a `Physics` section in the API
+  reference, and a reorganized examples overview.
+
 ## [0.1.2] - 2026-07-27
 
 This release corrects a gradient bug in `tsallis_entmax` that affected every

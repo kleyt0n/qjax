@@ -50,6 +50,7 @@ qjax.tsallis_entmax(jnp.array([2.0, 1.0, -1.0]), q=2.0)
 - [Building blocks](#building-blocks)
 - [A learnable `q`](#a-learnable-q)
 - [Label-noise robustness](#label-noise-robustness)
+- [Statistical physics](#statistical-physics)
 - [Installation](#installation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -147,6 +148,42 @@ The figure trains a small 3-class classifier on two shapes (blobs, spiral) from 
 <img src="https://raw.githubusercontent.com/Kleyt0n/qjax/main/docs/img/examples/classification_boundaries.png" alt="Decision boundaries for blobs and spiral across noise levels: Tsallis vs the Boltzmann-Gibbs-Shannon baseline" width="960"/>
 
 See the [classification example](https://kleyt0n.github.io/qjax/examples/classification/) for the full setup.
+
+## Statistical physics
+
+`qjax.physics` pairs the ``q``-primitives with the systems they are meant to
+describe, each with something *exact* to be checked against: Onsager's closed
+forms for the 2-D Ising model, a transfer matrix, exhaustive enumeration of a
+whole state space, the tabulated Lennard-Jones cluster minima, and the anomalous
+diffusion scaling relation $\alpha = 2/(3-q)$.
+
+```python
+import qjax.physics as qp
+
+qp.ISING_TC                      # 2 / ln(1 + sqrt 2) = 2.2691853, exact
+configurations = qp.sample_ising(key, size=16, temperatures=grid,
+                                 num_samples=80, sweeps=700)
+qp.onsager_free_energy_per_site(2.5)          # exact, thermodynamic limit
+qp.ising_transfer_matrix_log_z(8, 2.5)        # exact, finite lattice
+qp.sk_exact_observables(couplings, 0.4)       # all 2**N states, streamed
+
+# The Tsallis-Stariolo annealing schedule is a ratio of two q-logarithms, so its
+# q -> 1 limit is the Geman-Geman log schedule *exactly*, with no branch on q.
+qp.visiting_temperature(step, initial=0.9, q_visit=1.0)
+```
+
+Five examples build on it — and report negative results where that is what the
+numbers say:
+
+| example | the physics | measured against |
+| --- | --- | --- |
+| [Ising phases and $T_c$](https://kleyt0n.github.io/qjax/examples/ising_phases/) | finite-size crossover as *physical* label noise | Onsager $T_c$ (0.6 %), $\nu$ and $\beta$ (3 %) |
+| [Variational free energy at $q$](https://kleyt0n.github.io/qjax/examples/tsallis_free_energy/) | nonextensive variational autoregressive networks | two independent exact codes; $(q-1)N$ collapse |
+| [Generalized simulated annealing](https://kleyt0n.github.io/qjax/examples/generalized_annealing/) | Tsallis & Stariolo (1996) on LJ clusters | closed forms and the Cambridge Cluster Database |
+| [Anomalous diffusion](https://kleyt0n.github.io/qjax/examples/anomalous_diffusion/) | $q$ as a *measured* quantity | exact stationary $q$; Lutz's cold-atom law |
+| [Heavy-tailed PINN residuals](https://kleyt0n.github.io/qjax/examples/pinn_fokker_planck/) | an ICML 2026 Student-$t$ residual model, read as Tsallis | the closed-form solution; score correspondence to $10^{-15}$ |
+
+<img src="https://raw.githubusercontent.com/Kleyt0n/qjax/main/docs/img/examples/ising_phases.png" alt="Machine learning the 2-D Ising transition: sampler validation against exact enumeration, the measured label noise, and the finite-size extrapolation of T_c" width="960"/>
 
 ## Neural-network building blocks
 

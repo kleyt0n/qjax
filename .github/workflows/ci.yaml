@@ -130,7 +130,8 @@ jobs:
           "
 
   examples:
-    # The examples are ~1.7k lines that CI never executed. Run the fast ones.
+    # Run the fast examples end to end; the statistical-physics ones are also
+    # covered at their reduced tier by tests/test_examples_physics.py.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -146,6 +147,16 @@ jobs:
         run: |
           set -euo pipefail
           for script in examples/q_gaussian.py examples/learnable_q.py; do
+            echo "::group::${script}"
+            uv run python "${script}"
+            echo "::endgroup::"
+          done
+          # The five statistical-physics examples run at their reduced tier in
+          # tests/test_examples_physics.py, which the `test` job covers on every
+          # supported Python. Here they get one full default-tier pass, which is
+          # the only place their reported numbers -- and so the validation tables
+          # in the docs -- are actually produced end to end.
+          for script in examples/ising_phases.py examples/anomalous_diffusion.py; do
             echo "::group::${script}"
             uv run python "${script}"
             echo "::endgroup::"
